@@ -155,6 +155,26 @@ the part that was actually missing for floats: a deterministic, exact,
 commutative-associative merge, plus a canonical byte encoding so replicas
 can prove convergence with a hash instead of an epsilon.
 
+## Demos that assert
+
+Two runnable constructions in [`examples/`](examples/) — each is a probe
+that would have failed loudly if the property it rests on were weaker than
+claimed:
+
+* **`cargo run --example float_gcounter`** — the counter CRDT above,
+  tortured: 8 replicas, 300 random gossip schedules with duplicate and stale
+  delivery, hostile values (subnormals, exact cancellations). Every replica
+  converges byte-identically and every total equals the exactly rounded sum.
+  The built-in contrast: re-summing the *same* converged entries forward vs
+  backward in naive f64 disagreed in 184/300 schedules — exactness is
+  load-bearing, not decorative.
+* **`cargo run --example merkle_sum_tree`** — authenticated float
+  aggregates: a Merkle tree whose nodes carry merged accumulator states, so
+  the root commits to every leaf *and* the exact total. Change one leaf in a
+  4096-leaf total and recompute O(log n) nodes — byte-identical to a full
+  rebuild; verify any leaf against the root with 12 hashes. Meaningless with
+  ordinary float sums (no canonical bytes to hash); routine with bitrep.
+
 ## Verification
 
 The claim is proved, checked, fuzzed, and cross-examined — each by an
