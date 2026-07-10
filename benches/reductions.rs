@@ -49,6 +49,23 @@ fn bitrep_sum(xs: &[f64]) -> f64 {
     a.value()
 }
 
+/// Neal's superaccumulator (the `xsum` crate), fed through its fast path
+/// (`add_list`), using the variant its docs recommend per size: `XsumSmall`
+/// for n <= 1000, `XsumLarge` above. Exact like bitrep, but not mergeable
+/// and no canonical byte encoding — see the README's prior-art section.
+fn xsum_sum(xs: &[f64]) -> f64 {
+    use xsum::Xsum;
+    if xs.len() <= 1_000 {
+        let mut a = xsum::XsumSmall::new();
+        a.add_list(xs);
+        a.sum()
+    } else {
+        let mut a = xsum::XsumLarge::new();
+        a.add_list(xs);
+        a.sum()
+    }
+}
+
 fn bench_sums(c: &mut Criterion) {
     let mut g = c.benchmark_group("sum");
     for n in [1_000usize, 100_000, 1_000_000] {
@@ -59,6 +76,9 @@ fn bench_sums(c: &mut Criterion) {
         });
         g.bench_with_input(BenchmarkId::new("kahan", n), &xs, |b, xs| {
             b.iter(|| kahan(black_box(xs)))
+        });
+        g.bench_with_input(BenchmarkId::new("xsum", n), &xs, |b, xs| {
+            b.iter(|| xsum_sum(black_box(xs)))
         });
         g.bench_with_input(BenchmarkId::new("bitrep", n), &xs, |b, xs| {
             b.iter(|| bitrep_sum(black_box(xs)))

@@ -10,7 +10,9 @@
 //! magnitudes spread across ~600 decades (including subnormals), signs mixed,
 //! plus injected exact cancellations.
 
-use bitrep::{DotF64, SumF32, SumF64};
+#[cfg(feature = "std")]
+use bitrep::DotF64;
+use bitrep::{SumF32, SumF64};
 use sha2::{Digest, Sha256};
 
 /// Deterministic xorshift64* stream — no RNG dependency, no platform drift.
@@ -64,6 +66,7 @@ fn hex(b: &[u8]) -> String {
 /// that is a breaking change and gets a major version bump.
 const SUM_DIGEST: &str = "54f3ce5fbbd6130d70db87dffe73c26160b0d99a6f92f9dd3b276a99bb9f8441";
 const F32_DIGEST: &str = "825e3c7a6a43bd9870c00c222850dbbcf5eb529a63c748064832cc9f7eeeea26";
+#[cfg(feature = "std")]
 const DOT_DIGEST: &str = "e0e967014704730292e6f8679b745f7284d3077fd59c01bfbe37523f32e61a5a";
 
 #[test]
@@ -112,6 +115,7 @@ fn golden_f32_digest_is_architecture_independent() {
     assert_eq!(digest, F32_DIGEST);
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn golden_dot_digest_is_architecture_independent() {
     // Constrained magnitudes so products stay inside the exactness domain —

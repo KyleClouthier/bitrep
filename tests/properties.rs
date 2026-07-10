@@ -10,7 +10,7 @@ use num_bigint::BigInt;
 use num_traits::{Signed, Zero};
 use proptest::prelude::*;
 
-use bitrep::{DotF64, SumF32, SumF64};
+use bitrep::{SumF32, SumF64};
 
 /// Exact value of a finite f64 as an integer in units of 2^-1074.
 fn to_units(x: f64) -> BigInt {
@@ -219,35 +219,47 @@ proptest! {
         prop_assert_eq!(acc.value().to_bits(), want.to_bits());
     }
 
-    /// Dot products match the oracle computed over exact rational products.
-    #[test]
-    fn dot_matches_oracle(pairs in prop::collection::vec((-1e150f64..1e150, -1e150f64..1e150), 0..100)) {
-        let mut d = DotF64::new();
-        let mut total = BigInt::zero();
-        let mut skip = false;
-        for (a, b) in &pairs {
-            d.push(*a, *b);
-            // Oracle: exact product in units of 2^-2148 = units(a) * units(b) / 2^0...
-            // Each f64 is m*2^e; product exact in BigInt at combined scale.
-            // Using to_units at 2^-1074 each gives product at 2^-2148.
-            total += to_units(*a) * to_units(*b);
-            let p = a * b;
-            if *a != 0.0 && *b != 0.0 && p.abs() < f64::MIN_POSITIVE { skip = true; }
+}
+
+/// Dot-product tests — `DotF64` is std-gated in the crate, so this whole
+/// module only exists when the `std` feature is on.
+#[cfg(feature = "std")]
+mod dot_props {
+    use super::*;
+    use bitrep::DotF64;
+
+    proptest! {
+        /// Dot products match the oracle computed over exact rational products.
+        #[test]
+        fn dot_matches_oracle(pairs in prop::collection::vec((-1e150f64..1e150, -1e150f64..1e150), 0..100)) {
+            let mut d = DotF64::new();
+            let mut total = BigInt::zero();
+            let mut skip = false;
+            for (a, b) in &pairs {
+                d.push(*a, *b);
+                // Oracle: exact product in units of 2^-2148 = units(a) * units(b) / 2^0...
+                // Each f64 is m*2^e; product exact in BigInt at combined scale.
+                // Using to_units at 2^-1074 each gives product at 2^-2148.
+                total += to_units(*a) * to_units(*b);
+                let p = a * b;
+                if *a != 0.0 && *b != 0.0 && p.abs() < f64::MIN_POSITIVE { skip = true; }
+            }
+            prop_assume!(!skip); // underflow domain is excluded BY CONTRACT (and flagged by the API)
+            prop_assert!(d.is_exact());
+            // Round the 2^-2148-scaled exact dot with the reference: rescale by
+            // shifting the reference grid (equivalently: round units*2^-2148).
+            // round_reference expects units of 2^-1074, so shift down 1074 with
+            // exact halving only when possible — instead reuse it by treating the
+            // value as (total / 2^1074) in units of 2^-1074: do the division via
+            // rounding directly at the wider scale below.
+            let want = round_units_2148(&total);
+            prop_assert_eq!(d.value().to_bits(), want.to_bits());
         }
-        prop_assume!(!skip); // underflow domain is excluded BY CONTRACT (and flagged by the API)
-        prop_assert!(d.is_exact());
-        // Round the 2^-2148-scaled exact dot with the reference: rescale by
-        // shifting the reference grid (equivalently: round units*2^-2148).
-        // round_reference expects units of 2^-1074, so shift down 1074 with
-        // exact halving only when possible — instead reuse it by treating the
-        // value as (total / 2^1074) in units of 2^-1074: do the division via
-        // rounding directly at the wider scale below.
-        let want = round_units_2148(&total);
-        prop_assert_eq!(d.value().to_bits(), want.to_bits());
     }
 }
 
 /// Reference rounding for integers in units of 2^-2148 (dot-product scale).
+#[cfg(feature = "std")]
 fn round_units_2148(units: &BigInt) -> f64 {
     if units.is_zero() {
         return 0.0;
@@ -401,9 +413,10 @@ fn subnormal_accumulation() {
     assert_eq!(acc.value(), f64::from_bits(1u64 << 10)); // 2^-1064
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn dot_underflow_is_flagged_never_silent() {
-    let mut d = DotF64::new();
+    let mut d = bitrep::DotF64::new();
     d.push(1e-200, 1e-200); // product 1e-400: subnormal-underflow domain
     assert!(!d.is_exact());
     assert!(d.try_value().is_err());

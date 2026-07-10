@@ -101,22 +101,28 @@ Also in the box:
 ## What it costs (honest, measured numbers)
 
 Exactness is not free — but it's cheaper than its reputation. Measured with
-criterion on x86-64 (mixed magnitudes across ~12 decades; run `cargo bench`
-for your hardware):
+criterion on x86-64 (mixed magnitudes across ~12 decades; medians; run
+`cargo bench` for your hardware). The [`xsum` crate](https://crates.io/crates/xsum)
+(Neal's superaccumulator, also exact) is included because it's the honest
+comparison, fed through its fast path (`add_list`, size-recommended variant):
 
-| n | naive | Kahan | **bitrep** | vs naive | vs Kahan |
-|---|---|---|---|---|---|
-| 1,000 | 395 ns | 1.67 µs | **2.03 µs** | 5.1× | 1.2× |
-| 100,000 | 44.2 µs | 171 µs | **435 µs** | 9.8× | 2.5× |
-| 1,000,000 | 440 µs | 1.71 ms | **4.58 ms** | 10.4× | 2.7× |
-| merge 100 shards of 10k | — | — | **1.6 µs total** | shard-combining is effectively free |
+| n | naive | Kahan | xsum | **bitrep** | vs naive | vs Kahan | vs xsum |
+|---|---|---|---|---|---|---|---|
+| 1,000 | 368 ns | 1.58 µs | 1.52 µs | **1.82 µs** | 4.9× | 1.2× | 1.2× |
+| 100,000 | 40.8 µs | 163 µs | 137 µs | **395 µs** | 9.7× | 2.4× | 2.9× |
+| 1,000,000 | 409 µs | 1.65 ms | 1.36 ms | **4.20 ms** | 10.3× | 2.5× | 3.1× |
+| merge 100 shards of 10k | — | — | — | **1.35 µs total** | shard-combining is effectively free |
 
-So: ~5–10× a naive loop, and only ~1.2–2.7× Kahan — the compensated
-summation people already pay for accuracy alone, except this one is *exact*,
-*order-invariant*, and *mergeable*. Still ~220 million elements/second on
-one core. Use it where bits matter — replicated state, signed or hashed
-outputs, cross-machine aggregation, ill-conditioned sums — not in your inner
-render loop.
+Read the xsum column honestly: for raw single-machine exact sums at large n,
+**xsum is ~3× faster** — if that's your whole problem, use xsum. bitrep's
+price buys the properties xsum doesn't offer: a mergeable, serializable,
+canonically-encoded accumulator state (the distributed contract above),
+exact f32 and dot products, and the cross-architecture proof harness.
+Against Kahan — the compensated summation people already pay for accuracy
+alone — bitrep is ~1.2–2.5× and is *exact*, *order-invariant*, and
+*mergeable*. Still ~240 million elements/second on one core. Use it where
+bits matter — replicated state, signed or hashed outputs, cross-machine
+aggregation, ill-conditioned sums — not in your inner render loop.
 
 ## bitrep as a CRDT building block
 
@@ -176,8 +182,8 @@ What `bitrep` adds is the *packaging for distributed systems*: a mergeable,
 serializable, canonically-encoded accumulator state with breadth beyond sum
 (f32, dot, mean), a named-limits API that refuses to be silently wrong, and a
 CI harness that proves bit-identity across architectures on every commit.
-If you need raw single-machine exact-sum speed, benchmark `xsum` against this
-crate and pick per workload.
+If you need raw single-machine exact-sum speed, `xsum` is ~3× faster at
+large n (measured above) — pick per workload.
 
 ## Non-goals
 
