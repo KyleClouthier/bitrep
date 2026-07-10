@@ -98,11 +98,24 @@ fn round_reference(units: &BigInt, mant: u32, min_exp: i32, max_exp: i32) -> f64
             f64::INFINITY
         };
     }
-    let v = (q_u as f64) * 2f64.powi(exp2);
+    let v = (q_u as f64) * pow2_exact(exp2);
     if neg {
         -v
     } else {
         v
+    }
+}
+
+/// 2^k built from bits. `powi` is WRONG here: powi(-1067) evaluates via
+/// 1/2^1067 = 1/inf = 0 — a bug the differential fuzzer caught in this very
+/// oracle (the crate was right, the reference was wrong). Exact for
+/// k in [-1074, 1023].
+fn pow2_exact(k: i32) -> f64 {
+    assert!((-1074..=1023).contains(&k), "pow2_exact out of range: {k}");
+    if k >= -1022 {
+        f64::from_bits(((k + 1023) as u64) << 52)
+    } else {
+        f64::from_bits(1u64 << (k + 1074))
     }
 }
 
@@ -273,14 +286,9 @@ fn round_units_2148(units: &BigInt) -> f64 {
             f64::INFINITY
         };
     }
-    // exp2 can be far below f64 range pre-normalization; build via powi twice
-    // to stay exact (each factor is a power of two; product exact unless the
-    // final result is subnormal, in which case the split keeps it exact).
-    let v = if exp2 < -1022 {
-        (q_u as f64) * 2f64.powi(-1022) * 2f64.powi(exp2 + 1022)
-    } else {
-        (q_u as f64) * 2f64.powi(exp2)
-    };
+    // exp2 >= -1074 always holds at this scale (the subnormal grid bottoms
+    // out at exp2 = -1074), so the bit-built power is exact — never powi.
+    let v = (q_u as f64) * pow2_exact(exp2);
     if neg {
         -v
     } else {
@@ -388,7 +396,9 @@ fn subnormal_accumulation() {
     for _ in 0..1024 {
         acc.add(f64::from_bits(1)); // 2^-1074
     }
-    assert_eq!(acc.value(), 2f64.powi(-1064));
+    // NB expected value built from bits, not powi (powi is untrustworthy at
+    // extreme exponents — see pow2_exact).
+    assert_eq!(acc.value(), f64::from_bits(1u64 << 10)); // 2^-1064
 }
 
 #[test]

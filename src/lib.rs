@@ -83,6 +83,8 @@
 mod acc;
 #[cfg(feature = "std")]
 mod dot;
+#[cfg(kani)]
+mod kani_proofs;
 
 pub use acc::{SumF32, SumF64};
 #[cfg(feature = "std")]

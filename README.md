@@ -7,7 +7,7 @@ dot products and means whose results (and whole accumulator *state*) are
 byte-identical regardless of summation order, thread count, shard split,
 batch size, SIMD width, or CPU architecture.
 
-[![CI](https://github.com/kyleclouthier/bitrep/actions/workflows/ci.yml/badge.svg)](https://github.com/kyleclouthier/bitrep/actions/workflows/ci.yml)
+[![CI](https://github.com/DigitalMax321/bitrep/actions/workflows/ci.yml/badge.svg)](https://github.com/DigitalMax321/bitrep/actions/workflows/ci.yml)
 *The badge is the claim: CI computes golden test vectors on x86-64 Linux,
 ARM64 macOS, x86-64 Windows and wasm32, and asserts one SHA-256 across all of
 them, over multiple permutations and shardings, on every commit.*
@@ -65,32 +65,103 @@ Also in the box:
 * **`serde`** (optional feature) — accumulators serialize as their canonical
   bytes in any format.
 * **`no_std`** — sums work without std (dot needs `std` for `mul_add`).
+* **A language-neutral format** — [`FORMAT.md`](FORMAT.md) specifies the
+  289-byte state; a pure-Python reference implementation in
+  [`conformance/`](conformance/) reproduces the Rust crate **byte-for-byte**
+  from that spec alone. Shard in Python, merge in Rust, verify anywhere.
 * `#![forbid(unsafe_code)]`, zero runtime dependencies.
 
-## What it costs (honest numbers)
+## Who this is for
 
-Exactness is not free. On random data expect roughly **an order of magnitude**
-over a naive scalar loop (run `cargo bench` for your hardware; the suite
-compares naive / Kahan / bitrep and prices shard-merging). Use it where bits
-matter — replicated state, signed or hashed outputs, cross-machine
-aggregation, ill-conditioned sums — not in your inner render loop.
+* **Replicated state machines.** Replicas that carry float state drift when
+  reduction order differs across nodes; deterministic-simulation-testing
+  shops famously ban floats for exactly this reason. Order-invariant
+  reductions make float aggregates safe to replicate: every replica computes
+  the same bytes, and a hash comparison proves it.
+* **Distributed aggregation.** Sum a billion numbers on a hundred workers
+  and merge the 289-byte states in whatever order they arrive — retries,
+  stragglers and rebalancing stop mattering. The combined result is exact
+  and identical no matter how the work was split.
+* **Anything you sign, hash, or audit.** "This total came from these
+  inputs — verify it yourself" only works if recomputation is bit-identical.
+  bitrep gives float pipelines the property that makes signatures and
+  content-addressing meaningful.
+* **Reproducible ML and science.** Batch size, thread count and hardware
+  change reduction order, which is why temperature-0 LLMs answer differently
+  under load. Batch-invariant kernels pin the order; bitrep removes the
+  order from the equation entirely for the reductions you route through it.
+* **Lockstep and rollback netcode.** Cross-platform float determinism has
+  been a two-decade pain in game networking. A deterministic reduction for
+  scores, physics aggregates and state checksums removes a whole class of
+  desyncs.
+* **Regulated computation.** When an auditor asks "prove this number,"
+  an exact, replayable, byte-stable aggregation is the difference between
+  an argument and a receipt.
+
+## What it costs (honest, measured numbers)
+
+Exactness is not free — but it's cheaper than its reputation. Measured with
+criterion on x86-64 (mixed magnitudes across ~12 decades; run `cargo bench`
+for your hardware):
+
+| n | naive | Kahan | **bitrep** | vs naive | vs Kahan |
+|---|---|---|---|---|---|
+| 1,000 | 395 ns | 1.67 µs | **2.03 µs** | 5.1× | 1.2× |
+| 100,000 | 44.2 µs | 171 µs | **435 µs** | 9.8× | 2.5× |
+| 1,000,000 | 440 µs | 1.71 ms | **4.58 ms** | 10.4× | 2.7× |
+| merge 100 shards of 10k | — | — | **1.6 µs total** | shard-combining is effectively free |
+
+So: ~5–10× a naive loop, and only ~1.2–2.7× Kahan — the compensated
+summation people already pay for accuracy alone, except this one is *exact*,
+*order-invariant*, and *mergeable*. Still ~220 million elements/second on
+one core. Use it where bits matter — replicated state, signed or hashed
+outputs, cross-machine aggregation, ill-conditioned sums — not in your inner
+render loop.
+
+## bitrep as a CRDT building block
+
+Integer counters have had conflict-free replicated types (G-Counter,
+PN-Counter) for fifteen years. Float sums never did, because the construction
+requires merge to be commutative and associative — and float addition is
+neither. bitrep restores exactly those two properties (machine-checked in
+Kani, proved at the model level in Lean), which makes an **exact float
+counter CRDT** the standard recipe:
+
+* each replica keeps its own accumulator and only ever `add`s to it
+  (append-only, so a replica's states are totally ordered by `count`);
+* the replicated object is a map `replica-id -> accumulator state`, merged
+  per-entry by **highest count wins** (idempotent, monotone — a join);
+* the value anyone reads is the `merge` of all entries — exact,
+  order-invariant, and byte-identical on every converged replica.
+
+Stated honestly: `SumF64::merge` alone is *not* idempotent (merging the same
+shard twice double-counts, like adding any counter twice) — deduplication is
+the map layer's job, same as every counter CRDT. What bitrep contributes is
+the part that was actually missing for floats: a deterministic, exact,
+commutative-associative merge, plus a canonical byte encoding so replicas
+can prove convergence with a hash instead of an epsilon.
 
 ## Verification
 
-The claim is checked, not asserted:
+The claim is proved, checked, fuzzed, and cross-examined — each by an
+independent method, so no single mistake can hide:
 
-* **Independent oracle:** property tests sum in `BigInt` at 2⁻¹⁰⁷⁴ resolution
-  and round with a separately written IEEE reference — bitrep must match
-  bit-for-bit on arbitrary finite inputs, including subnormals and ±MAX.
-* **Order/shard invariance:** random permutations and random shardings with
-  random merge trees must produce byte-identical state.
-* **NIST StRD:** certified means of the [NumAcc1–4 numerical-accuracy
-  datasets](https://www.itl.nist.gov/div898/strd/univ/homepage.html) are
-  reproduced to the representational limit (LRE ≥ 14.5).
-* **Golden cross-arch vectors:** hostile 11k-element datasets (600 decades of
-  magnitude, subnormals, exact cancellations) hashed to pinned SHA-256s on
-  every CI platform.
-* **Miri** on the whole suite; clippy `-D warnings`; rustfmt.
+| Layer | Tool | What it establishes |
+|---|---|---|
+| **Proof (math)** | **Lean 4** ([`proofs/`](proofs/), zero `sorry`, axiom-audited in CI) | Order/merge-tree/permutation invariance of exact accumulation, and the rounding kernel is round-to-nearest-ties-to-even in full: half-ulp bound, minimality over *every* grid point, tie parity, exactness |
+| **Proof (bits)** | **Kani / CBMC** ([`src/kani_proofs.rs`](src/kani_proofs.rs)) | The Rust implementation's add commutes, cancellation is exact, merges commute and associate, and the codec round-trips — for **all** inputs, symbolically, not sampled |
+| **Differential fuzzing** | cargo-fuzz vs a BigInt oracle | 290M+ executions hunting order variance, oracle disagreement, codec breakage. Its first two catches: a real `count`-overflow bug (fixed) and a bug in **its own oracle** (`powi(-1067)` = 1/∞ = 0 — the crate was right) |
+| **Independent oracle** | proptest + `BigInt` + a separately written IEEE reference rounding | Correct rounding on arbitrary finite inputs, subnormals and ±MAX included; f32 rounds once (no double-rounding) |
+| **Real datasets** | [NIST StRD NumAcc1–4](https://www.itl.nist.gov/div898/strd/univ/homepage.html) | Certified means reproduced to the representational limit (LRE ≥ 14.5) |
+| **Cross-architecture** | golden SHA-256 vectors in CI | Identical hashes on x86-64 Linux, ARM64 macOS, x86-64 Windows and wasm32, over permutations and shardings, every commit |
+| **Cross-language** | [`FORMAT.md`](FORMAT.md) + pure-Python reference ([`conformance/`](conformance/)) | A second implementation in a second language reproduces the canonical bytes and rounded values exactly, from a spec — the format, proven portable |
+| **Hygiene** | Miri, clippy `-D warnings`, rustfmt, MSRV 1.74, `forbid(unsafe_code)`, zero runtime deps | The boring foundations |
+
+The honest division of labor: Lean proves the *algorithm's mathematics*,
+Kani checks the *Rust bits*, the oracle and NIST check the *encoding
+plumbing*, the golden vectors tie all of it to *hardware reality*, and the
+Python reference proves the *format* stands on its own. No single layer is
+asked to carry a claim it can't.
 
 ## Prior art (stand on shoulders, cite them)
 

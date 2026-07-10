@@ -6,10 +6,10 @@ rust-version = "1.74"
 authors = ["Kyle Clouthier <kyle@simgen.dev>"]
 license = "MIT OR Apache-2.0"
 description = "Order-invariant, bit-identical floating-point reductions. Any order. Any hardware. Same bits."
-repository = "https://github.com/kyleclouthier/bitrep"
+repository = "https://github.com/DigitalMax321/bitrep"
 documentation = "https://docs.rs/bitrep"
 readme = "README.md"
-keywords = ["deterministic", "reproducible", "float", "summation", "distributed"]
+keywords = ["deterministic", "reproducible", "summation", "crdt", "distributed"]
 categories = ["mathematics", "algorithms", "no-std", "science"]
 exclude = ["/.github", "/fuzz"]
 
@@ -17,6 +17,9 @@ exclude = ["/.github", "/fuzz"]
 default = ["std"]
 std = []
 serde = ["dep:serde"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)", "cfg(kani_slow)"] }
 
 [dependencies]
 serde = { version = "1", optional = true, default-features = false, features = ["derive"] }

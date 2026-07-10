@@ -88,8 +88,12 @@ impl SumF64 {
     }
 
     /// Add one value. Order never matters.
+    ///
+    /// The count saturates at `u64::MAX`; the documented exactness capacity
+    /// (2^63 additions) is far below that, so saturation is unreachable in
+    /// legitimate use but keeps adversarial deserialized states panic-free.
     pub fn add(&mut self, x: f64) {
-        self.count += 1;
+        self.count = self.count.saturating_add(1);
         let bits = x.to_bits();
         let neg = bits >> 63 != 0;
         let expf = ((bits >> 52) & 0x7ff) as i32;
@@ -142,7 +146,7 @@ impl SumF64 {
         // Top-limb wrap is unreachable within capacity (headroom analysis in
         // the module docs); two's complement makes signed merge "just add".
         self.specials.merge(&other.specials);
-        self.count += other.count;
+        self.count = self.count.saturating_add(other.count);
     }
 
     /// The exactly rounded sum (round-to-nearest, ties-to-even).
