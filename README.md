@@ -174,6 +174,13 @@ claimed:
   4096-leaf total and recompute O(log n) nodes — byte-identical to a full
   rebuild; verify any leaf against the root with 12 hashes. Meaningless with
   ordinary float sums (no canonical bytes to hash); routine with bitrep.
+* **`cargo run --release --example deterministic_training`** — bit-identical
+  data-parallel training. The gradient all-reduce is a float sum whose order
+  depends on worker count, so the "same" SGD run yields different model
+  bytes at 1 vs 4 vs 16 workers even in pure f64 — measured here: 4 worker
+  configurations, 4 distinct naive-f64 models, **1** identical bitrep model.
+  Named limit: this fixes the *reduction*; batch-invariant worker kernels
+  are the other half of the problem and are not claimed.
 
 ## Verification
 
