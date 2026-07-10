@@ -1,0 +1,84 @@
+# bitrep CI — the badge is the claim.
+# Golden test vectors (tests/golden.rs) must hash identically on every
+# platform in this matrix; a mismatch anywhere fails the build.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  test:
+    name: test (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: x86-64 linux,  os: ubuntu-latest }
+          - { name: arm64 macos,   os: macos-14 }
+          - { name: x86-64 windows, os: windows-latest }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --all-features
+      - run: cargo test --no-default-features
+
+  wasm:
+    name: wasm32 (wasmtime)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1
+      - uses: bytecodealliance/actions/wasmtime/setup@v1
+      - name: run tests under wasmtime
+        env:
+          CARGO_TARGET_WASM32_WASIP1_RUNNER: wasmtime
+        run: cargo test --target wasm32-wasip1
+
+  miri:
+    name: miri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - name: miri (deterministic + golden + NIST suites)
+        # Property tests under miri are too slow; the deterministic suites
+        # exercise every code path the properties do.
+        run: |
+          cargo +nightly miri test --test golden
+          cargo +nightly miri test --test nist_strd
+          cargo +nightly miri test --doc
+
+  lint:
+    name: clippy + fmt + docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo doc --no-deps --all-features
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  msrv:
+    name: msrv (1.74)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.74"
+      - run: cargo build --all-features
