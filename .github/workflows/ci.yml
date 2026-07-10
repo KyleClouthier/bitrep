@@ -109,15 +109,19 @@ jobs:
         run: python3 conformance/check.py
 
   kani:
-    name: kani (bit-level model checking)
+    name: kani (merge + codec harnesses)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: install kani
         run: cargo install --locked kani-verifier && cargo kani setup
+      # These three are fixed-shape limb arithmetic and solve in seconds to
+      # minutes. The add-path harnesses (add_commutes, cancellation_is_exact)
+      # decompose a symbolic f64 and shift across the whole accumulator —
+      # hours for CBMC, so they run in kani-heavy.yml on a schedule instead.
       - name: prove harnesses (each individually, bounded)
         run: |
-          for h in add_commutes cancellation_is_exact merge_commutes merge_associates bytes_roundtrip; do
+          for h in merge_commutes merge_associates bytes_roundtrip; do
             echo "=== $h ==="
             timeout 1500 cargo kani --no-default-features --harness "$h" | grep -E "VERIFICATION" || exit 1
           done

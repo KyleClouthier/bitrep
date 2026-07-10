@@ -1,0 +1,29 @@
+# The add-path Kani harnesses decompose a symbolic f64 and shift it across
+# the full 34-limb accumulator, which costs CBMC hours rather than minutes.
+# They run here on a weekly schedule (and on demand), with a budget to match;
+# the fast merge/codec harnesses run in ci.yml on every push.
+name: kani-heavy
+
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  kani-heavy:
+    name: kani (add-path harnesses, unbounded budget)
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: install kani
+        run: cargo install --locked kani-verifier && cargo kani setup
+      - name: prove the add-path harnesses
+        run: |
+          for h in add_commutes cancellation_is_exact; do
+            echo "=== $h ==="
+            timeout 10500 cargo kani --no-default-features --harness "$h" | grep -E "VERIFICATION" || exit 1
+          done

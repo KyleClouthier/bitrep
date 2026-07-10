@@ -9,6 +9,13 @@
 //!   commutativity, exact cancellation, byte-codec round-tripping;
 //! * tested (BigInt oracle, NIST StRD, golden vectors) — correct rounding of
 //!   `value()`, which involves f64 arithmetic Kani models slowly.
+//!
+//! Cost split (measured): the merge/codec harnesses are fixed-shape limb
+//! arithmetic and solve in seconds to minutes — CI proves them on every
+//! push (ci.yml). The add-path harnesses (`add_commutes`,
+//! `cancellation_is_exact`) decompose a symbolic f64 and shift it across
+//! all 34 limbs, which costs CBMC hours; they run in the scheduled
+//! `kani-heavy` workflow and locally.
 
 use crate::SumF64;
 
