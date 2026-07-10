@@ -73,15 +73,23 @@ Also in the box:
 
 ## Who this is for
 
+Each of these is a real, documented pain — and each was blocked by the same
+missing property: float addition whose *state* survives reordering.
+
 * **Replicated state machines.** Replicas that carry float state drift when
   reduction order differs across nodes; deterministic-simulation-testing
   shops famously ban floats for exactly this reason. Order-invariant
   reductions make float aggregates safe to replicate: every replica computes
   the same bytes, and a hash comparison proves it.
-* **Distributed aggregation.** Sum a billion numbers on a hundred workers
-  and merge the 289-byte states in whatever order they arrive — retries,
-  stragglers and rebalancing stop mattering. The combined result is exact
-  and identical no matter how the work was split.
+* **Distributed aggregation.** Parallel frameworks sum partitions in
+  whatever order execution delivers them, so the same job on the same data
+  returns different answers run to run — a
+  [documented Spark example](https://arxiv.org/abs/2101.09408) computes an
+  integral that should be 0 and gets anything from −8192 to +12288. Sum a
+  billion numbers on a hundred workers and merge the 289-byte states in
+  whatever order they arrive — retries, stragglers and rebalancing stop
+  mattering. The combined result is exact and identical no matter how the
+  work was split.
 * **Anything you sign, hash, or audit.** "This total came from these
   inputs — verify it yourself" only works if recomputation is bit-identical.
   bitrep gives float pipelines the property that makes signatures and

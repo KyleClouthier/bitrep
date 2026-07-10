@@ -48,6 +48,30 @@
 //! assert_eq!(a.value(), 1e-300);
 //! ```
 //!
+//! ## What becomes possible
+//!
+//! Each of these was previously blocked by one missing property — order-proof
+//! float addition with a mergeable, canonically-encoded state:
+//!
+//! * **Float counter CRDTs.** Counter CRDTs (G-Counter, PN-Counter) have been
+//!   integer-only for fifteen years because CRDT merge must commute and
+//!   associate, and float addition does neither. [`SumF64::merge`] restores
+//!   both, exactly — the standard counter recipe now works for floats, with
+//!   convergence provable by hash instead of epsilon. (See the README's CRDT
+//!   section for the construction.)
+//! * **Floats in replicated state machines.** Deterministic-simulation-testing
+//!   shops ban floats in replicated state because reduction order differs
+//!   across replicas and the states drift. Aggregates routed through an
+//!   accumulator produce identical bytes on every replica.
+//! * **Retry-immune distributed aggregation.** Parallel frameworks sum
+//!   partitions in whatever order execution happens to deliver, so the same
+//!   job can return different answers run to run. Merge order stops mattering:
+//!   any merge tree, any retry, any straggler — same bytes, exactly rounded.
+//! * **Numeric outputs you can sign or content-address.** "Recompute this
+//!   anywhere and the hash matches" is the property that makes signatures,
+//!   receipts and content-addressing meaningful for float pipelines — and it
+//!   holds across languages, via the canonical encoding (`FORMAT.md`).
+//!
 //! ## What this costs (honest numbers)
 //!
 //! Exactness is not free: expect roughly an order of magnitude over a naive
