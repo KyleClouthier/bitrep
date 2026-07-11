@@ -1,0 +1,17 @@
+[package]
+name = "bitrep-demo-wasm"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Raw wasm exports for the bitrep browser demo (not published)"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bitrep = { path = "../.." }
+
+[profile.release]
+opt-level = "s"
+lto = true

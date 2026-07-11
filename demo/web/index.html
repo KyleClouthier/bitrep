@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>bitrep — your device is part of the proof</title>
+<style>
+  :root {
+    --bg: #0d1117; --fg: #e6edf3; --dim: #8b949e; --card: #161b22;
+    --line: #30363d; --ok: #3fb950; --bad: #f85149; --accent: #58a6ff;
+    --mono: ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#ffffff; --fg:#1f2328; --dim:#57606a; --card:#f6f8fa;
+            --line:#d0d7de; --ok:#1a7f37; --bad:#cf222e; --accent:#0969da; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 780px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  h1 { font-size: 1.6rem; margin: 0 0 .2rem; }
+  h2 { font-size: 1.05rem; margin: 2.2rem 0 .6rem; }
+  .tag { color: var(--dim); margin: 0 0 1.6rem; }
+  .card { background: var(--card); border: 1px solid var(--line);
+          border-radius: 8px; padding: 1rem; margin: .8rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .85rem; }
+  td, th { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 600; }
+  .hash { font-family: var(--mono); font-size: .78rem; word-break: break-all; }
+  .ok { color: var(--ok); font-weight: 700; }
+  .bad { color: var(--bad); font-weight: 700; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+           padding: .5rem .9rem; font-size: .9rem; cursor: pointer; margin: .2rem .3rem .2rem 0; }
+  button.quiet { background: transparent; color: var(--accent);
+                 border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: default; }
+  input[type=range] { width: 160px; vertical-align: middle; }
+  textarea { width: 100%; min-height: 72px; background: var(--bg); color: var(--fg);
+             border: 1px solid var(--line); border-radius: 6px;
+             font-family: var(--mono); font-size: .72rem; padding: .5rem; }
+  .mono { font-family: var(--mono); font-size: .85rem; }
+  .dim { color: var(--dim); }
+  .small { font-size: .82rem; }
+  footer { color: var(--dim); font-size: .8rem; margin-top: 3rem;
+           border-top: 1px solid var(--line); padding-top: 1rem; }
+  a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>bitrep</h1>
+  <p class="tag">Any order. Any hardware. Same bits. — <span class="mono">fp64 fixes your decisions. It can't fix your hashes.</span></p>
+
+  <p>Floating-point addition isn't associative, so the <em>order</em> of a sum
+  changes the answer — and parallelism, sharding and batch size all change the
+  order. <a href="https://github.com/DigitalMax321/bitrep">bitrep</a> is a Rust
+  crate whose accumulator state is <strong>exact and order-invariant by
+  construction</strong>, so the result — and its bytes — are identical
+  everywhere. On every commit, CI computes a hostile 11,007-element reference
+  sum on four architectures and asserts one SHA-256.</p>
+
+  <h2>1 &nbsp;Your device is the fifth architecture</h2>
+  <div class="card">
+    <p class="small">This button sums the same 11,007 hostile values (600
+    decades of magnitude, subnormals, exact cancellations) with the same crate,
+    compiled to WebAssembly, <em>on your device, right now</em> — then hashes
+    the 289-byte accumulator state.</p>
+    <button id="run">Run the reference sum on this device</button>
+    <table id="archs">
+      <tr><th>where</th><th>SHA-256 of the accumulator state</th></tr>
+      <tr><td>x86-64 Linux (CI)</td><td class="hash">54f3ce5fbbd6130d70db87dffe73c26160b0d99a6f92f9dd3b276a99bb9f8441</td></tr>
+      <tr><td>ARM64 macOS (CI)</td><td class="hash">54f3ce5fbbd6130d70db87dffe73c26160b0d99a6f92f9dd3b276a99bb9f8441</td></tr>
+      <tr><td>x86-64 Windows (CI)</td><td class="hash">54f3ce5fbbd6130d70db87dffe73c26160b0d99a6f92f9dd3b276a99bb9f8441</td></tr>
+      <tr><td>wasm32 (CI)</td><td class="hash">54f3ce5fbbd6130d70db87dffe73c26160b0d99a6f92f9dd3b276a99bb9f8441</td></tr>
+      <tr><td><strong>this device</strong></td><td class="hash" id="mine">—</td></tr>
+    </table>
+    <p id="verdict" class="small"></p>
+  </div>
+
+  <h2>2 &nbsp;Reorder it. Shard it. The bytes don't move.</h2>
+  <div class="card">
+    <p class="small">Shuffle the dataset and split it into shards summed
+    separately then merged in random order — the accumulator bytes (and hash)
+    never change. The naive f64 sum of the <em>same numbers</em> does.</p>
+    <button id="shuffle" disabled>Shuffle order</button>
+    <label class="small">shards: <input id="shards" type="range" min="1" max="64" value="1" disabled>
+    <span id="shardn" class="mono">1</span></label>
+    <table>
+      <tr><th></th><th>value (all 64 bits)</th><th>state hash</th></tr>
+      <tr><td>bitrep</td><td class="mono" id="bval">—</td><td class="hash" id="bhash">—</td></tr>
+      <tr><td>naive f64</td><td class="mono" id="nval">—</td><td class="dim small">no canonical state to hash</td></tr>
+    </table>
+    <p class="small" id="movecount"></p>
+  </div>
+
+  <h2>3 &nbsp;Merge across devices</h2>
+  <div class="card">
+    <p class="small">Accumulators serialize to 289 bytes and merge exactly.
+    Open this page on <em>another device</em> (a phone is another
+    architecture), press <em>Export second half</em> there, and paste the
+    state here. This device sums only the <em>first</em> half, merges your
+    pasted state, and — if the property holds — reproduces the full reference
+    hash above, byte for byte, across two machines that never met.</p>
+    <button id="exportB" disabled>Export second half (copy to clipboard)</button>
+    <textarea id="importBox" placeholder="paste a 289-byte state (base64) from the other device…"></textarea>
+    <button id="mergeBtn" disabled>Sum first half here + merge pasted state</button>
+    <p class="small">merged state hash: <span class="hash" id="mergedHash">—</span><br>
+    <span id="mergedVerdict"></span></p>
+  </div>
+
+  <footer>
+    <p><strong>What this page proves and doesn't.</strong> It proves this
+    build of the crate, on your device, reproduces the byte-exact reference
+    state pinned in CI — and that order, sharding and cross-device merging
+    don't change it. The per-commit four-architecture guarantee lives in
+    <a href="https://github.com/DigitalMax321/bitrep">the repo's CI</a>, where
+    it's machine-checked; this page is the same test, in your hand. The
+    superaccumulator idea is classic (Kulisch; Neal 2015; Demmel–Nguyen) —
+    what bitrep adds is the mergeable, serializable, canonically-encoded
+    packaging you just used. MIT OR Apache-2.0.</p>
+  </footer>
+</main>
+
+<script>
+(async () => {
+  const PINNED = "54f3ce5fbbd6130d70db87dffe73c26160b0d99a6f92f9dd3b276a99bb9f8441";
+  const $ = id => document.getElementById(id);
+
+  const { instance } = await WebAssembly.instantiateStreaming(
+    fetch("bitrep_demo_wasm.wasm"), {});
+  const w = instance.exports;
+  const mem = () => new DataView(w.memory.buffer);
+
+  const STATE = w.state_len();
+  const n = w.golden_len();
+  const dataPtr = w.buf_alloc(n * 8);
+  w.golden_fill(dataPtr);
+  // Copy out (memory may grow later and detach views)
+  const data = new Float64Array(new Float64Array(w.memory.buffer, dataPtr, n));
+  let order = [...data];
+
+  const statePtr = w.buf_alloc(STATE);
+  const stateBytes = acc => {
+    w.acc_write_bytes(acc, statePtr);
+    return new Uint8Array(w.memory.buffer, statePtr, STATE).slice();
+  };
+  const sha = async bytes =>
+    [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
+      .map(b => b.toString(16).padStart(2, "0")).join("");
+
+  function sumAcc(values) {
+    const a = w.acc_new();
+    for (const x of values) w.acc_add(a, x);
+    return a;
+  }
+  function sumSharded(values, k) {
+    // k shards, merged in a random order — the distributed schedule.
+    const shards = Array.from({length: k}, () => []);
+    values.forEach((x, i) => shards[i % k].push(x));
+    const accs = shards.map(sumAcc);
+    for (let i = accs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [accs[i], accs[j]] = [accs[j], accs[i]];
+    }
+    const total = accs[0];
+    for (let i = 1; i < accs.length; i++) { w.acc_merge(total, accs[i]); w.acc_free(accs[i]); }
+    return total;
+  }
+  const bits = x => {
+    const dv = new DataView(new ArrayBuffer(8));
+    dv.setFloat64(0, x);
+    return "0x" + dv.getBigUint64(0).toString(16).padStart(16, "0");
+  };
+
+  let moves = 0;
+  async function recompute() {
+    const k = +$("shards").value;
+    const acc = sumSharded(order, k);
+    const bytes = stateBytes(acc);
+    const h = await sha(bytes);
+    const v = w.acc_value(acc);
+    w.acc_free(acc);
+    $("bval").textContent = bits(v);
+    $("bhash").textContent = h;
+    const naive = order.reduce((s, x) => s + x, 0);
+    $("nval").textContent = bits(naive);
+    const same = h === PINNED;
+    $("bhash").className = "hash " + (same ? "ok" : "bad");
+    if (moves) $("movecount").textContent =
+      `${moves} reorderings/reshardings so far — bitrep hash unchanged every time; watch the naive bits drift.`;
+    return h;
+  }
+
+  $("run").onclick = async () => {
+    const h = await recompute();
+    $("mine").textContent = h;
+    const same = h === PINNED;
+    $("mine").className = "hash " + (same ? "ok" : "bad");
+    $("verdict").innerHTML = same
+      ? '<span class="ok">MATCH.</span> Your device just reproduced, byte for byte, the state four other architectures computed. That hash was not downloaded — it was computed here.'
+      : '<span class="bad">MISMATCH — that is a bug worth reporting.</span>';
+    for (const id of ["shuffle", "shards", "exportB", "mergeBtn"]) $(id).disabled = false;
+  };
+
+  $("shuffle").onclick = () => {
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    moves++; recompute();
+  };
+  $("shards").oninput = () => { $("shardn").textContent = $("shards").value; moves++; recompute(); };
+
+  const half = Math.floor(data.length / 2);
+  $("exportB").onclick = async () => {
+    const acc = sumAcc(data.slice(half)); // canonical order, second half
+    const b64 = btoa(String.fromCharCode(...stateBytes(acc)));
+    w.acc_free(acc);
+    await navigator.clipboard.writeText(b64);
+    $("exportB").textContent = "Copied — paste it on the other device";
+  };
+  $("mergeBtn").onclick = async () => {
+    let raw;
+    try { raw = Uint8Array.from(atob($("importBox").value.trim()), c => c.charCodeAt(0)); }
+    catch { $("mergedVerdict").innerHTML = '<span class="bad">not valid base64</span>'; return; }
+    if (raw.length !== STATE) {
+      $("mergedVerdict").innerHTML = `<span class="bad">expected ${STATE} bytes, got ${raw.length}</span>`; return;
+    }
+    new Uint8Array(w.memory.buffer, statePtr, STATE).set(raw);
+    const imported = w.acc_from_bytes(statePtr);
+    if (!imported) { $("mergedVerdict").innerHTML = '<span class="bad">rejected: not a valid canonical state</span>'; return; }
+    const mine = sumAcc(data.slice(0, half));
+    w.acc_merge(mine, imported); w.acc_free(imported);
+    const h = await sha(stateBytes(mine));
+    w.acc_free(mine);
+    $("mergedHash").textContent = h;
+    const same = h === PINNED;
+    $("mergedHash").className = "hash " + (same ? "ok" : "bad");
+    $("mergedVerdict").innerHTML = same
+      ? '<span class="ok">MATCH.</span> Half summed there, half summed here, merged — identical to the whole computed anywhere.'
+      : '<span class="bad">MISMATCH — the pasted state didn\'t come from the second half of this dataset.</span>';
+  };
+})();
+</script>
+</body>
+</html>
