@@ -23,7 +23,9 @@
 
 use crate::SumF64;
 
-/// Any finite f64, symbolically.
+/// Any finite f64, symbolically. Only the `kani_slow` add-path harnesses use it, so it is gated the
+/// same way — otherwise it is dead code under the default config, which `-D warnings` rejects.
+#[cfg(kani_slow)]
 fn any_finite() -> f64 {
     let x: f64 = kani::any();
     kani::assume(x.is_finite());
