@@ -2,8 +2,8 @@
 
 **Any order. Any hardware. Same bits.**
 
-Order-invariant, bit-identical floating-point reductions for Rust — exact sums,
-dot products and means whose results (and whole accumulator *state*) are
+Order-invariant, bit-identical floating-point reductions for Rust — exact
+sums and dot products whose results (and whole accumulator *state*) are
 byte-identical regardless of summation order, thread count, shard split,
 batch size, SIMD width, or CPU architecture.
 
@@ -243,8 +243,11 @@ serializable accumulator state.
 
 What `bitrep` adds is the *packaging for distributed systems*: a mergeable,
 serializable, canonically-encoded accumulator state with breadth beyond sum
-(f32, dot, mean), a named-limits API that refuses to be silently wrong, and a
+(f32, dot), a named-limits API that refuses to be silently wrong, and a
 CI harness that proves bit-identity across architectures on every commit.
+(An exactly rounded `mean()` — one correct rounding of the exact sum divided
+by the count — is planned; means today are `value()/count`, one extra
+rounding, which is how the NIST means below are reproduced.)
 If you need raw single-machine exact-sum speed, `xsum` is ~3× faster at
 large n (measured above) — pick per workload.
 

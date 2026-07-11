@@ -13,6 +13,10 @@ keywords = ["deterministic", "reproducible", "summation", "crdt", "distributed"]
 categories = ["mathematics", "algorithms", "no-std", "science"]
 exclude = ["/.github", "/fuzz", "/demo", "/.claude", "/probes", "RESEARCH.md"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = ["std"]
 std = []
