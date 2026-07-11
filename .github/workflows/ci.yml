@@ -118,10 +118,10 @@ jobs:
       # These three are fixed-shape limb arithmetic and solve in seconds to
       # minutes. The add-path harnesses (add_commutes, cancellation_is_exact)
       # decompose a symbolic f64 and shift across the whole accumulator —
-      # hours for CBMC, so they run in kani-heavy.yml on a schedule instead.
+      # hours for CBMC, so they are gated behind cfg(kani_slow) for local runs.
       - name: prove harnesses (each individually, bounded)
         run: |
-          for h in merge_commutes merge_associates bytes_roundtrip; do
+          for h in merge_commutes merge_associates bytes_roundtrip extrema_merge_commutes extrema_merge_associates extrema_bytes_roundtrip; do
             echo "=== $h ==="
             timeout 1500 cargo kani --no-default-features --harness "$h" | grep "VERIFICATION:- SUCCESSFUL" || exit 1
           done

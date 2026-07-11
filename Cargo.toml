@@ -1,6 +1,6 @@
 [package]
 name = "bitrep"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.74"
 authors = ["Kyle Clouthier <kyle@simgen.dev>"]
@@ -21,12 +21,22 @@ rustdoc-args = ["--cfg", "docsrs"]
 default = ["std"]
 std = []
 serde = ["dep:serde"]
+# Convergent statistics: mergeable, order-invariant moments (mean, variance,
+# skewness, kurtosis, covariance, regression) with exactly rounded reads.
+# Pulls num-bigint for the read-time exact-rational rounding only.
+stats = ["std", "dep:num-bigint", "dep:num-traits"]
+# Receipts: canonical state hashes (SHA-256 of the canonical encoding) for
+# signing convergent aggregates. Bring your own signature scheme.
+receipts = ["std", "dep:sha2"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)", "cfg(kani_slow)"] }
 
 [dependencies]
 serde = { version = "1", optional = true, default-features = false, features = ["derive"] }
+num-bigint = { version = "0.4", optional = true }
+num-traits = { version = "0.2", optional = true }
+sha2 = { version = "0.10", optional = true }
 
 [dev-dependencies]
 # fork/timeout (default features) pull in wait-timeout, which doesn't build
@@ -38,6 +48,10 @@ serde_json = "1"
 criterion = { version = "0.5", default-features = false }
 sha2 = "0.10.9"
 xsum = "0.1"
+
+[[example]]
+name = "convergent_stats"
+required-features = ["stats"]
 
 [[bench]]
 name = "reductions"

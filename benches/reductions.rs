@@ -49,6 +49,13 @@ fn bitrep_sum(xs: &[f64]) -> f64 {
     a.value()
 }
 
+/// The v0.2 fast streaming front-end: same canonical bytes, chunked adds.
+fn bitrep_fast_sum(xs: &[f64]) -> f64 {
+    let mut a = bitrep::FastSumF64::new();
+    a.extend_from_slice(xs);
+    a.finish().value()
+}
+
 /// Neal's superaccumulator (the `xsum` crate), fed through its fast path
 /// (`add_list`), using the variant its docs recommend per size: `XsumSmall`
 /// for n <= 1000, `XsumLarge` above. Exact like bitrep, but not mergeable
@@ -82,6 +89,9 @@ fn bench_sums(c: &mut Criterion) {
         });
         g.bench_with_input(BenchmarkId::new("bitrep", n), &xs, |b, xs| {
             b.iter(|| bitrep_sum(black_box(xs)))
+        });
+        g.bench_with_input(BenchmarkId::new("bitrep_fast", n), &xs, |b, xs| {
+            b.iter(|| bitrep_fast_sum(black_box(xs)))
         });
     }
     g.finish();

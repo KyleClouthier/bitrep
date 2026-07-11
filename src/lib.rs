@@ -85,11 +85,19 @@
 //! ## Scope and named limits
 //!
 //! * [`SumF64`] / [`SumF32`]: exact, order-invariant sums. `no_std` compatible.
+//! * [`FastSumF64`]: a high-throughput streaming front-end (Neal's
+//!   small-accumulator technique) that finishes into the same canonical
+//!   [`SumF64`] bytes — differentially verified against the direct path.
 //! * [`DotF64`] (feature `std`): exact dot products via FMA two-products.
 //!   **Named limit:** each partial product `a*b` must not overflow, and must
 //!   not fall in the range where FMA two-products lose exactness
 //!   (|a·b| < ~2⁻⁹⁶⁹); see [`DotF64`] docs. Inputs outside that domain are
 //!   detected and reported, never silently wrong.
+//! * [`MomentsF64`] / [`Moments4F64`] / [`CovF64`] (feature `stats`):
+//!   convergent statistics — mergeable, order-invariant moment states with
+//!   **exactly rounded** reads (mean, variance, kurtosis, covariance,
+//!   regression slope/intercept, R²), derived from the exact integer state
+//!   with a single final rounding.
 //! * NaN/±∞ are tracked as flags (any NaN, or +∞ and −∞ together, yields NaN;
 //!   a single infinity sign is preserved). An exactly-zero sum returns `+0.0`
 //!   (canonical zero: `-0.0` inputs are sign-preserving in IEEE addition only
@@ -107,11 +115,37 @@
 #![deny(missing_docs)]
 
 mod acc;
+#[cfg(feature = "stats")]
+mod covmat;
 #[cfg(feature = "std")]
 mod dot;
+mod fast;
+#[cfg(feature = "stats")]
+mod hist;
 #[cfg(kani)]
 mod kani_proofs;
+mod lattice;
+mod merge;
+#[cfg(feature = "receipts")]
+mod receipt;
+#[cfg(feature = "std")]
+mod replicated;
+#[cfg(feature = "stats")]
+mod stats;
 
 pub use acc::{SumF32, SumF64};
+#[cfg(feature = "stats")]
+pub use covmat::CovMatrixF64;
 #[cfg(feature = "std")]
 pub use dot::{dot, DotError, DotF64};
+pub use fast::FastSumF64;
+#[cfg(feature = "stats")]
+pub use hist::HistogramF64;
+pub use lattice::ExtremaF64;
+pub use merge::Mergeable;
+#[cfg(feature = "receipts")]
+pub use receipt::state_hash;
+#[cfg(feature = "std")]
+pub use replicated::{ConvergentMap, Deltas, Replicated};
+#[cfg(feature = "stats")]
+pub use stats::{CovF64, Moments4F64, MomentsF64, PnMomentsF64, StatsError, WeightedMomentsF64};

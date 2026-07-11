@@ -144,6 +144,20 @@ impl DotF64 {
         out[SumF64::BYTES] = self.underflowed as u8;
         out
     }
+
+    /// Decode a state produced by [`to_bytes`](Self::to_bytes). Returns `None`
+    /// if the inner sum is invalid or the exactness byte is not 0/1.
+    pub fn from_bytes(b: &[u8; SumF64::BYTES + 1]) -> Option<Self> {
+        let mut inner = [0u8; SumF64::BYTES];
+        inner.copy_from_slice(&b[..SumF64::BYTES]);
+        let acc = SumF64::from_bytes(&inner)?;
+        let underflowed = match b[SumF64::BYTES] {
+            0 => false,
+            1 => true,
+            _ => return None,
+        };
+        Some(Self { acc, underflowed })
+    }
 }
 
 /// Convenience: the exactly rounded dot product of two slices.

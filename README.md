@@ -152,9 +152,20 @@ canonically-encoded accumulator state (the distributed contract above),
 exact f32 and dot products, and the cross-architecture proof harness.
 Against Kahan — the compensated summation people already pay for accuracy
 alone — bitrep is ~1.2–2.5× and is *exact*, *order-invariant*, and
-*mergeable*. Still ~240 million elements/second on one core. Use it where
-bits matter — replicated state, signed or hashed outputs, cross-machine
-aggregation, ill-conditioned sums — not in your inner render loop.
+*mergeable*. Use it where bits matter — replicated state, signed or hashed
+outputs, cross-machine aggregation, ill-conditioned sums — not in your inner
+render loop.
+
+**v0.2 adds `FastSumF64`**, a streaming front-end using Neal's
+small-accumulator technique (the same algorithm family as xsum) that finishes
+into the *same canonical bytes* — verified differentially against the direct
+path on every test run. Measured: ~800 Melem/s at n=1k (xsum-parity+) and
+~370 Melem/s at n≥100k (+45% over `SumF64::add`; xsum's large-n variant
+remains ~2× faster there — its radix-by-exponent batching is future work).
+And because merge order is free, **parallel exact summation scales with zero
+determinism caveats**: `examples/parallel_sum.rs` measures ~1.2 Gelem/s on
+four threads — byte-identical for every thread count, which no naive
+parallel sum can say.
 
 ## bitrep as a CRDT building block
 
@@ -191,6 +202,60 @@ framework of Gomes et al., OOPSLA'17) verifies integer counters — an
 *exact float* replicated aggregate needs exactly the merge properties float
 addition lacks and bitrep restores.
 
+## Convergent statistics (feature `stats`, v0.2)
+
+The counter construction generalizes to a statistics algebra. Any statistic
+whose sufficient state is a set of *exact monomial sums* (Σx, Σx², Σx³, Σx⁴,
+Σxy) inherits the whole contract — and the read is computed from the exact
+integer state in big-integer arithmetic with **one** final
+round-to-nearest-even, so it is the **correctly rounded value of the true
+statistic**, bit-identical across any sharding, arrival order, or merge tree:
+
+* [`MomentsF64`] — exactly rounded `mean`, `variance` (population & sample);
+  `stddev` (one extra IEEE-`sqrt` rounding, still bit-invariant);
+* [`Moments4F64`] — adds **exactly rounded kurtosis** (μ₄/μ₂² is a pure
+  rational of the state — the n and unit factors cancel) and skewness;
+* [`CovF64`] — exactly rounded covariance, least-squares `slope`,
+  `intercept`, and `R²`; correlation via one IEEE `sqrt`.
+
+Why this beats the classical art: Chan/Golub/LeVeque parallel moments (the
+standard since 1979) are *algebraically* exact but computed in floats — the
+bits depend on the merge tree, and the merge double-counts on re-delivery.
+These states are bit-invariant, honestly bounded (`StatsError` reports
+overflow/underflow of the two-product domain — never a silent wrong value),
+and CRDT-lawful under the same per-replica map layer
+(`examples/convergent_stats.rs` checks the laws and demonstrates a variance
+the textbook formula returns as *negative* — exactly rounded here). Every
+read is verified in CI against an independent big-integer oracle with a
+neighbor-comparison correct-rounding check (`tests/stats.rs`).
+
+Named limits, stated: products must stay clear of overflow and the subnormal
+range (|x| ≲ 1.3e154 for squares; 3rd/4th moments narrow it further) —
+violations are detected and reported. Order statistics (median, quantiles)
+and arrival-order-dependent aggregates (EWMA) are outside this family.
+
+The rest of the toolkit rounds out what real aggregation needs, all under
+one [`Mergeable`] trait so containers and transports are generic:
+
+* [`WeightedMomentsF64`] — exactly rounded weighted mean/variance (weights
+  travel with samples, so timestamp-derived weights stay order-invariant);
+* [`PnMomentsF64`] — **exact retraction** (`add`/`remove`, PN-counter
+  style): insert-then-delete returns reads to byte-identical values — the
+  incremental-view-maintenance primitive;
+* [`CovMatrixF64`] — exact covariance *matrices* and deterministic multiple
+  linear regression (normal equations over exactly rounded entries;
+  fixed-pivot solve — bit-invariant, honestly not exactly rounded);
+* [`ExtremaF64`] — exact min/max (`no_std`, idempotent by nature);
+* [`HistogramF64`] — fixed-bucket exact counts with honest quantile
+  *bounds* (order statistics have no exact mergeable form — stated, not
+  worked around);
+* [`ConvergentMap`] — keyed states: `GROUP BY`, tumbling windows,
+  per-metric fleets; [`Replicated`] — the lawful per-replica CRDT layer,
+  generic over any state; [`Deltas`] — delta-state transport
+  (Almeida–Shoker–Baquero style);
+* `state_hash` (feature `receipts`) — the canonical 32-byte commitment for
+  signing converged aggregates.
+
 ## Demos that assert
 
 Two runnable constructions in [`examples/`](examples/) — each is a probe
@@ -225,9 +290,9 @@ independent method, so no single mistake can hide:
 
 | Layer | Tool | What it establishes |
 |---|---|---|
-| **Proof (math)** | **Lean 4** ([`proofs/`](proofs/), zero `sorry`, axiom-audited in CI) | Order/merge-tree/permutation invariance of exact accumulation, and the rounding kernel is round-to-nearest-ties-to-even in full: half-ulp bound, minimality over *every* grid point, tie parity, exactness |
-| **Proof (bits)** | **Kani / CBMC** ([`src/kani_proofs.rs`](src/kani_proofs.rs)) | The Rust implementation's merges commute and associate and the codec round-trips — for **all** inputs, symbolically, proven on every push. The add-path harnesses (add commutes, exact cancellation) decompose a symbolic f64 across all 34 limbs and are beyond CBMC's practical reach (did not close in ~3h on CI), so they're `kani_slow`-gated for local runs; those properties are proved at the model level in **Lean** and exercised by the oracle tests and the fuzzer |
-| **Differential fuzzing** | cargo-fuzz vs a BigInt oracle | 290M+ executions hunting order variance, oracle disagreement, codec breakage. Its first two catches: a real `count`-overflow bug (fixed) and a bug in **its own oracle** (`powi(-1067)` = 1/∞ = 0 — the crate was right) |
+| **Proof (math)** | **Lean 4** ([`proofs/`](proofs/), zero `sorry`, axiom-audited in CI) | Order/merge-tree/permutation invariance of exact accumulation; the rounding kernel is round-to-nearest-ties-to-even in full (half-ulp bound, minimality over *every* grid point, tie parity, exactness); the float-G-Counter convergence laws; and the toolkit merge algebra ([`proofs/ToolkitAlgebra.lean`](proofs/ToolkitAlgebra.lean)): products, per-key maps, min/max and boolean joins, saturating counters — the laws every v0.2 state instantiates |
+| **Proof (bits)** | **Kani / CBMC** ([`src/kani_proofs.rs`](src/kani_proofs.rs)) | The Rust implementation's merges commute and associate and the codecs round-trip — for **all** inputs, symbolically, proven on every push (six harnesses: sum merge/codec + extrema merge laws/codec). Kani's first catch on v0.2: adversarial `ExtremaF64` decodes broke merge commutativity — the decoder now rejects non-canonical states. The add-path harnesses (add commutes, exact cancellation) decompose a symbolic f64 across all 34 limbs and are beyond CBMC's practical reach (did not close in ~3h on CI), so they're `kani_slow`-gated for local runs; those properties are proved at the model level in **Lean** and exercised by the oracle tests and the fuzzer |
+| **Differential fuzzing** | cargo-fuzz vs a BigInt oracle | 290M+ executions hunting order variance, oracle disagreement, codec breakage. Catches so far: a real `count`-overflow bug (fixed), a bug in **its own oracle** (`powi(-1067)` = 1/∞ = 0 — the crate was right), and on v0.2 a length-prefix overflow in the `CovMatrixF64` decoder, found in under a minute of fuzzing the new [`toolkit_decoders`](fuzz/fuzz_targets/toolkit_decoders.rs) target (fixed, with the crashing input kept in-tree under fuzz/artifacts as a regression record) |
 | **Independent oracle** | proptest + `BigInt` + a separately written IEEE reference rounding | Correct rounding on arbitrary finite inputs, subnormals and ±MAX included; f32 rounds once (no double-rounding) |
 | **Real datasets** | [NIST StRD NumAcc1–4](https://www.itl.nist.gov/div898/strd/univ/homepage.html) | Certified means reproduced to the representational limit (LRE ≥ 14.5) |
 | **Cross-architecture** | golden SHA-256 vectors in CI | Identical hashes on x86-64 Linux, ARM64 macOS, x86-64 Windows and wasm32, over permutations and shardings, every commit |

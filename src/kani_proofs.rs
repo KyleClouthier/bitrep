@@ -151,3 +151,53 @@ fn bytes_roundtrip() {
         assert_eq!(acc.to_bytes(), bytes);
     }
 }
+
+/// ExtremaF64 merge commutes for ALL states (adversarial decodes included).
+#[kani::proof]
+fn extrema_merge_commutes() {
+    let ba: [u8; crate::ExtremaF64::BYTES] = kani::any();
+    let bb: [u8; crate::ExtremaF64::BYTES] = kani::any();
+    let (Some(a0), Some(b0)) = (
+        crate::ExtremaF64::from_bytes(&ba),
+        crate::ExtremaF64::from_bytes(&bb),
+    ) else {
+        return;
+    };
+    let mut ab = a0.clone();
+    crate::Mergeable::merge(&mut ab, &b0);
+    let mut ba2 = b0;
+    crate::Mergeable::merge(&mut ba2, &a0);
+    assert_eq!(ab.to_bytes(), ba2.to_bytes());
+}
+
+/// ExtremaF64 merge associates for ALL states.
+#[kani::proof]
+fn extrema_merge_associates() {
+    let ba: [u8; crate::ExtremaF64::BYTES] = kani::any();
+    let bb: [u8; crate::ExtremaF64::BYTES] = kani::any();
+    let bc: [u8; crate::ExtremaF64::BYTES] = kani::any();
+    let (Some(a), Some(b), Some(c)) = (
+        crate::ExtremaF64::from_bytes(&ba),
+        crate::ExtremaF64::from_bytes(&bb),
+        crate::ExtremaF64::from_bytes(&bc),
+    ) else {
+        return;
+    };
+    let mut left = a.clone();
+    crate::Mergeable::merge(&mut left, &b);
+    crate::Mergeable::merge(&mut left, &c);
+    let mut right_inner = b;
+    crate::Mergeable::merge(&mut right_inner, &c);
+    let mut right = a;
+    crate::Mergeable::merge(&mut right, &right_inner);
+    assert_eq!(left.to_bytes(), right.to_bytes());
+}
+
+/// ExtremaF64 byte codec round-trips every valid state exactly.
+#[kani::proof]
+fn extrema_bytes_roundtrip() {
+    let bytes: [u8; crate::ExtremaF64::BYTES] = kani::any();
+    if let Some(e) = crate::ExtremaF64::from_bytes(&bytes) {
+        assert_eq!(e.to_bytes(), bytes);
+    }
+}
