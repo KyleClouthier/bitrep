@@ -12,10 +12,11 @@
 //!
 //! Cost split (measured): the merge/codec harnesses are fixed-shape limb
 //! arithmetic and solve in seconds to minutes — CI proves them on every
-//! push (ci.yml). The add-path harnesses (`add_commutes`,
-//! `cancellation_is_exact`) decompose a symbolic f64 and shift it across
-//! all 34 limbs, which costs CBMC hours; they run in the scheduled
-//! `kani-heavy` workflow and locally.
+//! push (ci.yml). `add_commutes` decomposes a symbolic f64 and shifts it
+//! across all 34 limbs — minutes on a large machine, beyond a 7GB CI
+//! runner — and runs in the scheduled `kani-heavy` workflow.
+//! `cancellation_is_exact` and `add_placement_is_irrelevant` are gated
+//! behind `cfg(kani_slow)`: unbounded CBMC cost, run at your own risk.
 
 use crate::SumF64;
 
@@ -43,6 +44,14 @@ fn add_commutes() {
 
 /// Adding x then -x returns exactly to the empty integer state (count aside)
 /// — cancellation is exact for every finite value, including subnormals.
+///
+/// `kani_slow`: as written this harness is beyond CBMC's practical reach —
+/// measured 11 hours and 23GB RSS without closing. Cancellation exactness is
+/// meanwhile covered by the Lean model (trivially: x + (-x) = 0 over the
+/// integer state), the `max_cancels_exactly` test, the BigInt-oracle
+/// property tests, and the fuzzer's cancellation-heavy corpus. Restructuring
+/// this harness into exponent-class case splits is future work.
+#[cfg(kani_slow)]
 #[kani::proof]
 fn cancellation_is_exact() {
     let x = any_finite();

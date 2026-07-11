@@ -123,5 +123,5 @@ jobs:
         run: |
           for h in merge_commutes merge_associates bytes_roundtrip; do
             echo "=== $h ==="
-            timeout 1500 cargo kani --no-default-features --harness "$h" | grep -E "VERIFICATION" || exit 1
+            timeout 1500 cargo kani --no-default-features --harness "$h" | grep "VERIFICATION:- SUCCESSFUL" || exit 1
           done
