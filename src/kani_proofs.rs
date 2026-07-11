@@ -12,11 +12,14 @@
 //!
 //! Cost split (measured): the merge/codec harnesses are fixed-shape limb
 //! arithmetic and solve in seconds to minutes — CI proves them on every
-//! push (ci.yml). `add_commutes` decomposes a symbolic f64 and shifts it
-//! across all 34 limbs — minutes on a large machine, beyond a 7GB CI
-//! runner — and runs in the scheduled `kani-heavy` workflow.
-//! `cancellation_is_exact` and `add_placement_is_irrelevant` are gated
-//! behind `cfg(kani_slow)`: unbounded CBMC cost, run at your own risk.
+//! push (ci.yml). The add-path harnesses (`add_commutes`,
+//! `cancellation_is_exact`, `add_placement_is_irrelevant`) decompose a
+//! symbolic f64 and shift it across all 34 limbs, which is beyond CBMC's
+//! practical reach (they did not close in ~3 h on CI runners). They are
+//! gated behind `cfg(kani_slow)` for local exhaustive runs only. The add-path
+//! *properties* are proved at the model level in Lean (order-invariance,
+//! exact cancellation) and exercised at the bit level by the fast merge/codec
+//! harnesses, the BigInt-oracle tests, and the fuzzer.
 
 use crate::SumF64;
 
@@ -29,6 +32,12 @@ fn any_finite() -> f64 {
 
 /// add(x); add(y) leaves the same state as add(y); add(x) — for ALL pairs.
 /// This is the core claim: the state is order-invariant by construction.
+///
+/// `kani_slow`: decomposing a symbolic f64 and shifting it across all 34 limbs is beyond CBMC's
+/// practical reach — it did not close in ~3 h on CI runners. The commutativity of the state IS proved
+/// at the model level in Lean (`proofs/OrderInvariance.lean`, `perm_sum_invariant`); this harness is
+/// kept for local exhaustive runs, not CI.
+#[cfg(kani_slow)]
 #[kani::proof]
 fn add_commutes() {
     let x = any_finite();
