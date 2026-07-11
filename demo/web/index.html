@@ -54,7 +54,7 @@
 
   <p>Floating-point addition isn't associative, so the <em>order</em> of a sum
   changes the answer — and parallelism, sharding and batch size all change the
-  order. <a href="https://github.com/DigitalMax321/bitrep">bitrep</a> is a Rust
+  order. <a href="https://github.com/KyleClouthier/bitrep">bitrep</a> is a Rust
   crate whose accumulator state is <strong>exact and order-invariant by
   construction</strong>, so the result — and its bytes — are identical
   everywhere. On every commit, CI computes a hostile 11,007-element reference
@@ -114,7 +114,7 @@
     build of the crate, on your device, reproduces the byte-exact reference
     state pinned in CI — and that order, sharding and cross-device merging
     don't change it. The per-commit four-architecture guarantee lives in
-    <a href="https://github.com/DigitalMax321/bitrep">the repo's CI</a>, where
+    <a href="https://github.com/KyleClouthier/bitrep">the repo's CI</a>, where
     it's machine-checked; this page is the same test, in your hand. The
     superaccumulator idea is classic (Kulisch; Neal 2015; Demmel–Nguyen) —
     what bitrep adds is the mergeable, serializable, canonically-encoded

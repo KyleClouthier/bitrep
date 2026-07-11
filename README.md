@@ -7,7 +7,7 @@ dot products and means whose results (and whole accumulator *state*) are
 byte-identical regardless of summation order, thread count, shard split,
 batch size, SIMD width, or CPU architecture.
 
-[![CI](https://github.com/DigitalMax321/bitrep/actions/workflows/ci.yml/badge.svg)](https://github.com/DigitalMax321/bitrep/actions/workflows/ci.yml)
+[![CI](https://github.com/KyleClouthier/bitrep/actions/workflows/ci.yml/badge.svg)](https://github.com/KyleClouthier/bitrep/actions/workflows/ci.yml)
 *The badge is the claim: CI computes golden test vectors on x86-64 Linux,
 ARM64 macOS, x86-64 Windows and wasm32, and asserts one SHA-256 across all of
 them, over multiple permutations and shardings, on every commit.*
