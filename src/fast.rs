@@ -406,8 +406,10 @@ mod tests {
 
     #[test]
     fn single_add_path_matches_batch_path() {
-        let xs: Vec<f64> = (0..40_000)
-            .map(|i| ((i * 2654435761u64 as usize) % 9973) as f64 * 1e-4 - 0.5)
+        // 64-bit arithmetic explicitly: `usize` is 32-bit on wasm32 and this
+        // product would overflow there.
+        let xs: Vec<f64> = (0..40_000u64)
+            .map(|i| (i.wrapping_mul(2_654_435_761) % 9973) as f64 * 1e-4 - 0.5)
             .collect();
         let mut one = FastSumF64::new();
         for &x in &xs {
