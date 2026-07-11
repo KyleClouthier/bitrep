@@ -11,7 +11,7 @@ documentation = "https://docs.rs/bitrep"
 readme = "README.md"
 keywords = ["deterministic", "reproducible", "summation", "crdt", "distributed"]
 categories = ["mathematics", "algorithms", "no-std", "science"]
-exclude = ["/.github", "/fuzz", "/demo", "/.claude", "/probes", "RESEARCH.md"]
+exclude = ["/.github", "/fuzz", "/demo", "/.claude", "/probes", "/paper", "RESEARCH.md"]
 
 [package.metadata.docs.rs]
 all-features = true
