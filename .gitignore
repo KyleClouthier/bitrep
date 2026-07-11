@@ -4,3 +4,6 @@ proptest-regressions/
 __pycache__/
 /.claude/
 probes/
+
+.env
+.env.*
