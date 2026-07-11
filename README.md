@@ -12,6 +12,11 @@ batch size, SIMD width, or CPU architecture.
 ARM64 macOS, x86-64 Windows and wasm32, and asserts one SHA-256 across all of
 them, over multiple permutations and shardings, on every commit.*
 
+**[Try it in your browser](https://simgen.dev/bitrep/)** — the same crate,
+compiled to wasm, reproduces the CI-pinned hash on your device, live; then
+shuffle the data, shard it, and merge accumulator states across two of your
+devices. Your machine is the fifth architecture in the proof.
+
 ## Why
 
 Floating-point addition isn't associative, so the *order* of a reduction
@@ -70,6 +75,25 @@ Also in the box:
   [`conformance/`](conformance/) reproduces the Rust crate **byte-for-byte**
   from that spec alone. Shard in Python, merge in Rust, verify anywhere.
 * `#![forbid(unsafe_code)]`, zero runtime dependencies.
+
+## What this makes possible
+
+Four things that were previously blocked by the same missing property —
+float addition whose *state* survives reordering — each demonstrated by a
+runnable construction in this repo:
+
+* **Float counter CRDTs** — counter CRDTs have been integer-only for fifteen
+  years; the [CRDT section](#bitrep-as-a-crdt-building-block) gives the
+  recipe and [`float_gcounter`](examples/float_gcounter.rs) tortures it.
+* **Floats in replicated state machines** — replicas that route aggregates
+  through an accumulator compute identical bytes; the float ban becomes
+  selective instead of total.
+* **Authenticated float aggregates** — Merkle trees over exact sums: signed
+  totals with O(log n) verifiable updates
+  ([`merkle_sum_tree`](examples/merkle_sum_tree.rs)).
+* **Worker-count-invariant gradient aggregation** — the same model bytes
+  from any number of workers
+  ([`deterministic_training`](examples/deterministic_training.rs)).
 
 ## Who this is for
 
@@ -211,7 +235,11 @@ superaccumulators](https://arxiv.org/abs/1505.05571) (see the [`xsum`
 crate](https://crates.io/crates/xsum) for a direct port), Demmel–Nguyen /
 [ReproBLAS](https://bebop.cs.berkeley.edu/reproblas/) reproducible BLAS, and
 Ogita–Rump–Oishi error-free transformations. Shewchuk's adaptive arithmetic
-and Kahan summation solve related problems with different trade-offs.
+and Kahan summation solve related problems with different trade-offs. The
+closest database-side work is
+[reproducible aggregation in RDBMSs](https://arxiv.org/abs/1802.09883)
+(ICDE'18) — single-node GroupBy reproducibility, without a mergeable or
+serializable accumulator state.
 
 What `bitrep` adds is the *packaging for distributed systems*: a mergeable,
 serializable, canonically-encoded accumulator state with breadth beyond sum
