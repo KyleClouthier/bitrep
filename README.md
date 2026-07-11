@@ -78,9 +78,10 @@ Also in the box:
 
 ## What this makes possible
 
-Four things that were previously blocked by the same missing property —
-float addition whose *state* survives reordering — each demonstrated by a
-runnable construction in this repo:
+Everything below is blocked by the same missing property — float addition
+whose *state* survives reordering — and unlocked once you have it. The first
+four are demonstrated by runnable constructions in this repo; the rest are
+what the v0.2 `stats` toolkit turns from "trust me" into "check me".
 
 * **Float counter CRDTs** — counter CRDTs have been integer-only for fifteen
   years; the [CRDT section](#bitrep-as-a-crdt-building-block) gives the
@@ -94,6 +95,25 @@ runnable construction in this repo:
 * **Worker-count-invariant gradient aggregation** — the same model bytes
   from any number of workers
   ([`deterministic_training`](examples/deterministic_training.rs)).
+* **Numeric aggregates for local-first apps** — the CRDT ecosystem
+  (Automerge, Yjs, ElectricSQL, Ditto) has counters and text but no *exact
+  numeric* aggregation, because float sums don't converge. `MomentsF64` /
+  `CovF64` do: offline replicas accumulate, sync in any order, and every
+  device shows the same mean, variance and regression — see
+  [`convergent_stats`](examples/convergent_stats.rs).
+* **Replicated / streaming database aggregates** — `SUM`, `AVG`, `VAR`,
+  `STDDEV`, `COVAR`, `CORR`, `REGR_*` as mergeable states, keyed by group
+  (`ConvergentMap` = `GROUP BY`) or window. With `PnMomentsF64`'s exact
+  retraction, insert-then-delete returns the reads to *byte-identical*
+  values — so backfills and reprocessing stop changing answers.
+* **Signable statistics** — every state hashes canonically (`state_hash`),
+  so an SLO report, a risk number, or a pooled regression becomes a receipt:
+  recompute it from the inputs and the hash matches, or a contribution was
+  dropped, duplicated or altered.
+* **Federated analytics** — sites share ~500-byte states instead of raw
+  data and merge to exact pooled mean / variance / covariance / regression.
+  (Auditability, not privacy — compose with DP / secure-aggregation where
+  privacy is required.)
 
 ## Who this is for
 
