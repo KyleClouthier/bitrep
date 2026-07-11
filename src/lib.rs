@@ -57,8 +57,10 @@
 //!   integer-only for fifteen years because CRDT merge must commute and
 //!   associate, and float addition does neither. [`SumF64::merge`] restores
 //!   both, exactly — the standard counter recipe now works for floats, with
-//!   convergence provable by hash instead of epsilon. (See the README's CRDT
-//!   section for the construction.)
+//!   convergence provable by hash instead of epsilon. The construction's
+//!   convergence laws (join semilattice, delivery-schedule invariance, exact
+//!   reads) are machine-checked in `proofs/FloatGCounter.lean`; the README's
+//!   CRDT section gives the recipe.
 //! * **Floats in replicated state machines.** Deterministic-simulation-testing
 //!   shops ban floats in replicated state because reduction order differs
 //!   across replicas and the states drift. Aggregates routed through an
