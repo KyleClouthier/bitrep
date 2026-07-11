@@ -315,15 +315,50 @@ mergeable or serializable accumulator state.
 floating-point counter CRDT with mechanized convergence laws and did not find one; if it exists, we
 would like to cite it and correct this note.
 
+\section{Beyond counters: convergent statistics}
+\label{sec:stats}
+
+The construction generalizes past counters. Any statistic whose sufficient state is a set of
+\emph{exact monomial sums} ($\sum x_i$, $\sum x_i^2$, $\sum x_i^3$, $\sum x_i^4$, $\sum x_i y_i$, \dots)
+inherits the whole contract: each sum lives in its own exact accumulator, so the composite state is a
+product of lawful monoids and the merge laws lift componentwise (and pointwise for keyed families);
+these lifting laws are machine-checked in \texttt{proofs/ToolkitAlgebra.lean}. Reads are computed from
+the exact integer state in big-integer arithmetic with a \emph{single} final round-to-nearest-even, so
+every read that is a rational function of the state is the \emph{correctly rounded value of the true
+statistic}: mean, population and sample variance, covariance, least-squares slope and intercept, and
+$R^2$. Two cases are worth noting: Pearson kurtosis $\mu_4/\mu_2^2$ and squared skewness
+$\mu_3^2/\mu_2^3$ are exactly rounded because the sample-size and unit factors cancel, leaving a pure
+rational of the state; reads involving a square root (standard deviation, correlation, skewness) apply
+one IEEE-correctly-rounded \textsf{sqrt} to an exactly rounded radicand---at most two roundings, still
+bit-identical everywhere. Exact retraction (a positive/negative pair of moment states) gives
+insert-then-delete reads that return to byte-identical values, and exact covariance \emph{matrices}
+support multiple linear regression whose normal-equation entries are exactly rounded (the solve itself
+is a fixed deterministic elimination: bit-invariant, not exactly rounded---a stated second tier).
+
+The classical mergeable-moments art makes the contrast precise. The pairwise update formulas of Chan,
+Golub, and LeVeque~\cite{chan} are \emph{algebraically} exact but computed in floating point: the
+resulting bits depend on the merge tree, and the merge double-counts on re-delivery. Mergeable
+summaries~\cite{agarwal} are mergeable by design but approximate. Reproducible reductions in the
+ReproBLAS lineage achieve bit-identity by \emph{pinning} an operation order. Exact,
+order-invariant-without-pinning, and CRDT-lawful appears to be an unoccupied combination; as with the
+counter itself, we state this as a question rather than a claim of priority. The generalization
+ships in the implementation's \texttt{stats} feature (v0.2), with each read verified against an
+independent big-integer oracle by a neighbor-comparison correct-rounding check, including
+catastrophic-cancellation regimes (mean $10^8$, spread $10^{-3}$: the textbook one-pass formula returns
+a \emph{negative} variance; the reads here are exactly rounded). The two-product domain limits apply per
+monomial and are detected, never silent.
+
 \section{Limitations}
 
 The Lean proofs establish the construction's value-level algebra, not an end-to-end verification of the
 implementation; the map layer's per-entry count and dedup are trusted and tested rather than proved
 (\S\ref{sec:proofs}). Like every counter CRDT, deduplication of repeated shards is the map layer's job;
 $\mathsf{merge}$ alone is not idempotent. The accumulator's cost (\S\ref{sec:eval}) makes this suitable
-for aggregates where bit-identity is the point, not for high-throughput inner loops. Finally, we address
-grow-only and (by the standard positive/negative pair) signed counters over exact sums; richer
-floating-point CRDTs (e.g., exact replicated means or variances with correct rounding) are future work.
+for aggregates where bit-identity is the point, not for high-throughput inner loops. Finally, the
+statistics of \S\ref{sec:stats} inherit these limits per monomial sum (narrowing the certified input
+domain for third and fourth moments), and order statistics (medians, quantiles) admit no exact mergeable
+state at all---fixed-bucket histograms with exact counts and honest quantile \emph{bounds} are the
+boundary of the family.
 
 \section{Conclusion}
 
@@ -340,10 +375,17 @@ is often a lawful instantiation rather than a new algorithm.
 \paragraph{Artifacts.} The implementation, the Lean proofs (with the axiom-audit CI job), and the
 randomized torture test are available as open source (MIT/Apache-2.0) at
 \url{https://github.com/KyleClouthier/bitrep}; the exact float counter CRDT is the
-\texttt{float\_gcounter} example and the convergence proofs are \texttt{proofs/FloatGCounter.lean}. A
-browser demonstration of the underlying exact accumulator is at \url{https://simgen.dev/bitrep/}.
+\texttt{float\_gcounter} example, the convergence proofs are \texttt{proofs/FloatGCounter.lean}, and
+the convergent statistics of \S\ref{sec:stats} are the \texttt{stats} feature (v0.2 on crates.io) with
+merge-algebra proofs in \texttt{proofs/ToolkitAlgebra.lean}. A browser demonstration of the underlying
+exact accumulator is at \url{https://simgen.dev/bitrep/}.
 
 \begin{thebibliography}{9}
+\bibitem{chan} T.~F.~Chan, G.~H.~Golub, and R.~J.~LeVeque.
+  \emph{Algorithms for Computing the Sample Variance: Analysis and Recommendations.}
+  The American Statistician 37(3), 1983.
+\bibitem{agarwal} P.~K.~Agarwal, G.~Cormode, Z.~Huang, J.~M.~Phillips, Z.~Wei, and K.~Yi.
+  \emph{Mergeable Summaries.} PODS 2012.
 \bibitem{shapiro} M.~Shapiro, N.~Pregui\c{c}a, C.~Baquero, and M.~Zawirski.
   \emph{Conflict-free Replicated Data Types.} SSS 2011.
 \bibitem{gomes} V.~B.~F.~Gomes, M.~Kleppmann, D.~P.~Mulligan, and A.~R.~Beresford.
