@@ -3,3 +3,4 @@ Cargo.lock
 proptest-regressions/
 __pycache__/
 /.claude/
+probes/
