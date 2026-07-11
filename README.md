@@ -179,6 +179,18 @@ the part that was actually missing for floats: a deterministic, exact,
 commutative-associative merge, plus a canonical byte encoding so replicas
 can prove convergence with a hash instead of an epsilon.
 
+The construction's convergence laws are machine-checked in
+[`proofs/FloatGCounter.lean`](proofs/FloatGCounter.lean): the count-wins
+join is a semilattice (commutative, associative, idempotent), folding *any*
+delivery schedule — any order, any duplicates — yields the same state, and
+the converged read equals the exact sum of every add that ever happened.
+For calibration: existing counter CRDTs are integer-valued (Redis
+Active-Active documents 59-bit integer counters; Akka and Riak counters are
+integers), and the mechanized-CRDT literature (e.g. the Isabelle/HOL
+framework of Gomes et al., OOPSLA'17) verifies integer counters — an
+*exact float* replicated aggregate needs exactly the merge properties float
+addition lacks and bitrep restores.
+
 ## Demos that assert
 
 Two runnable constructions in [`examples/`](examples/) — each is a probe
