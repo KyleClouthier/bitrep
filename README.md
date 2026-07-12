@@ -2,8 +2,8 @@
 
 **Any order. Any hardware. Same bits.**
 
-Order-invariant, bit-identical floating-point reductions for Rust — exact
-sums and dot products whose results (and whole accumulator *state*) are
+Order-invariant, bit-identical floating-point reductions for **Rust, JavaScript,
+and Python** — exact sums and dot products whose results (and whole accumulator *state*) are
 byte-identical regardless of summation order, thread count, shard split,
 batch size, SIMD width, or CPU architecture.
 
@@ -16,6 +16,21 @@ them, over multiple permutations and shardings, on every commit.*
 compiled to wasm, reproduces the CI-pinned hash on your device, live; then
 shuffle the data, shard it, and merge accumulator states across two of your
 devices. Your machine is the fifth architecture in the proof.
+
+## Install
+
+```bash
+cargo add bitrep       # Rust      →  https://crates.io/crates/bitrep
+npm  install bitrep    # JS / wasm →  https://www.npmjs.com/package/bitrep
+pip  install bitrep    # Python    →  https://pypi.org/project/bitrep/
+```
+
+One Rust engine backs all three: the JavaScript package is the crate compiled to
+**WebAssembly**, the Python package is a native **PyO3** extension. The full API —
+exact sums and dot products, convergent statistics, covariance matrices,
+histograms, receipts, and the CRDT layer — is available in every language, and a
+receipt hashed in Python matches one hashed in JavaScript byte-for-byte. Binding
+sources are in [`bindings/`](bindings/).
 
 ## Why
 
