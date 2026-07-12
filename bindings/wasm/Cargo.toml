@@ -16,6 +16,3 @@ crate-type = ["cdylib", "rlib"]
 bitrep = { path = "../..", features = ["stats", "receipts"] }
 wasm-bindgen = "0.2"
 
-[profile.release]
-opt-level = "s"
-lto = true
