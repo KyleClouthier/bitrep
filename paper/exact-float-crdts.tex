@@ -10,6 +10,8 @@
 \usepackage{listings}
 \usepackage{booktabs}
 \usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
 
 \hypersetup{colorlinks=true,linkcolor=black,citecolor=black,urlcolor=blue}
 
@@ -256,6 +258,41 @@ comparing a hash of the canonical bytes, and any disagreement is a single-bit ev
 $\varepsilon$ judgment call. For float aggregates this is qualitatively new---an ordinary float sum has
 no canonical state to hash---and it is what makes the CRDT's convergence \emph{auditable} rather than
 merely asymptotic.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[>=Stealth,
+  b/.style={draw, rounded corners, align=center, font=\small, inner sep=4pt},
+  n/.style={font=\footnotesize}]
+\node[b] (src) at (0,0)      {contributions\\$\{x_1,x_2,\dots\}$};
+\node[b] (ra)  at (3.4,0.95) {replica A\\(one merge order)};
+\node[b] (rb)  at (3.4,-0.95){replica B\\(different order,\\different sharding)};
+\node[b] (s)   at (7.3,0)     {identical\\canonical bytes $S$};
+\node[b] (h)   at (10.8,0)    {$\mathrm{SHA}\text{-}256(S)$\\one digest $H$};
+\draw[->] (src) -- (ra);
+\draw[->] (src) -- (rb);
+\draw[->] (ra) -- (s);
+\draw[->] (rb) -- (s);
+\draw[->] (s) -- (h);
+\end{tikzpicture}
+\caption{Hash-checkable convergence. Two replicas that receive the same contributions in different
+merge orders and shardings compute \emph{byte-identical} canonical state $S$, hence the same $32$-byte
+digest $H$; agreement is a single hash comparison, not an $\varepsilon$ judgment. An ordinary
+floating-point sum has no such canonical state to hash.}
+\label{fig:convergence}
+\end{figure}
+
+The implementation exposes this as a first-class primitive (the \texttt{receipts} feature, v0.2):
+\texttt{state\_hash} returns the $32$-byte SHA-256 of the canonical encoding, so two parties that hold the
+same multiset---in any order, any sharding, any merge tree---obtain the same digest, and any dropped,
+duplicated, or altered contribution changes it. This makes an aggregate \emph{proof-carrying}: signing
+is deliberately out of scope (bring your own keys---ed25519, ML-DSA, whatever the trust plane uses), and
+a verifier recomputes the aggregate from the shards it trusts and compares the signed digest. The
+security reduction is clean: agreement on a floating-point statistic reduces to agreement on a hash, and
+forging a different multiset with the same aggregate reduces to a hash collision rather than to hiding
+inside an $\varepsilon$ tolerance. Because the digest commits to the exact state (not an
+order-dependent float), the same commitment is reproducible on heterogeneous hardware---the property that
+makes a signed aggregate meaningful across replicas that never shared an execution order.
 
 \section{Implementation and Evaluation}\label{sec:eval}
 
