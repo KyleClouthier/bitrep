@@ -15,4 +15,5 @@ crate-type = ["cdylib"]
 # Aliased to avoid colliding with this crate's own lib name `bitrep` (the Python module).
 [dependencies]
 bitrep_core = { package = "bitrep", path = "../..", features = ["stats", "receipts"] }
-pyo3 = { version = "0.22", features = ["extension-module"] }
+# abi3-py38: one forward-compatible wheel per platform (Python 3.8+), no per-version build.
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py38"] }
