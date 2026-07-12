@@ -5,6 +5,8 @@ name: CI
 
 on:
   push:
+    # branch runs CI while it is being developed. Remove it (leaving [main])
+    # before merging this branch into main.
     branches: [main]
   pull_request:
 
@@ -94,6 +96,112 @@ jobs:
           ./elan-init -y --default-toolchain leanprover/lean4:v4.31.0
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
       - run: bash proofs/check.sh
+
+  comparator:
+    # Independent adversarial-grade check of the Lean proofs using the Lean
+    # FRO's comparator (github.com/leanprover/comparator): guarantees that
+    # Solution.lean proves EXACTLY the statements in the trusted spec
+    # proofs/comparator/Challenge.lean, uses only the standard axiom base
+    # (propext / Quot.sound / Classical.choice), and that every proof replays
+    # in the Lean kernel. Additive to (not a replacement for) `lean-proofs`,
+    # which stays the source of truth for the audited theorem list.
+    #
+    # The comparator README wraps the run in systemd-run to defend against an
+    # ADVERSARIAL Solution file. Our Solution.lean is our own code (CI checks
+    # it is byte-for-byte the concatenation of the four proof files), so
+    # running comparator directly — without systemd-run — is acceptable here.
+    name: comparator (statement match + axiom audit + kernel replay)
+    runs-on: ubuntu-latest
+    env:
+      # Both Lean tools must be version-compatible with the project toolchain
+      # in proofs/comparator/lean-toolchain (leanprover/lean4:v4.31.0):
+      # lean4export loads the .olean files that toolchain produces.
+      LEAN4EXPORT_REF: v4.31.0
+      COMPARATOR_REF: master # comparator has no releases; master is the branch the Lean FRO ships
+      LANDRUN_REF: main      # comparator requires landrun built from main-branch source
+      DEPS: ${{ github.workspace }}/.comparator-deps
+    steps:
+      - uses: actions/checkout@v4
+
+      # Guard: the Solution comparator checks must be exactly the proofs the
+      # rest of the repo (and the lean-proofs job) reasons about.
+      - name: Solution.lean is byte-for-byte the four proof files
+        run: |
+          cat proofs/OrderInvariance.lean proofs/RoundNearestEven.lean \
+              proofs/FloatGCounter.lean proofs/ToolkitAlgebra.lean \
+            | diff -u - proofs/comparator/Solution.lean
+
+      # Guard: the comparator must cover exactly the theorems check.sh audits
+      # (check.sh remains the source of truth for the theorem list).
+      - name: config.json lists exactly the theorems audited by check.sh
+        run: |
+          grep -oP '(?<=^#print axioms )Bitrep\.[A-Za-z0-9_.]+' proofs/check.sh \
+            | sort > /tmp/audited.txt
+          jq -r '.theorem_names[]' proofs/comparator/config.json \
+            | sort > /tmp/config.txt
+          diff -u /tmp/audited.txt /tmp/config.txt
+          echo "OK: $(wc -l < /tmp/audited.txt) theorems covered"
+
+      - name: install elan (Lean toolchain manager)
+        run: |
+          curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          # No go.sum in this repo (landrun is cloned below); the action's
+          # built-in module cache would only emit a warning.
+          cache: false
+
+      - name: resolve dependency commits (cache keys)
+        id: deps
+        run: |
+          echo "comparator-sha=$(git ls-remote https://github.com/leanprover/comparator.git "$COMPARATOR_REF" | cut -f1)" >> "$GITHUB_OUTPUT"
+          echo "lean4export-sha=$(git ls-remote https://github.com/leanprover/lean4export.git "refs/tags/$LEAN4EXPORT_REF" | cut -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: cache comparator build
+        id: cache-comparator
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPS }}/comparator
+          key: comparator-${{ steps.deps.outputs.comparator-sha }}
+
+      - name: cache lean4export build
+        id: cache-lean4export
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPS }}/lean4export
+          key: lean4export-${{ steps.deps.outputs.lean4export-sha }}
+
+      - name: build landrun (Landlock sandbox comparator shells out to)
+        run: |
+          git clone --depth 1 --branch "$LANDRUN_REF" https://github.com/Zouuup/landrun.git "$DEPS/landrun"
+          cd "$DEPS/landrun"
+          go build -o landrun cmd/landrun/main.go
+          ./landrun --version || true
+
+      - name: build comparator (its own pinned toolchain, via elan)
+        if: steps.cache-comparator.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch "$COMPARATOR_REF" https://github.com/leanprover/comparator.git "$DEPS/comparator"
+          cd "$DEPS/comparator"
+          lake build comparator
+
+      - name: build lean4export (tag matching the proofs toolchain)
+        if: steps.cache-lean4export.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch "$LEAN4EXPORT_REF" https://github.com/leanprover/lean4export.git "$DEPS/lean4export"
+          cd "$DEPS/lean4export"
+          lake build
+
+      - name: run comparator on the bitrep proofs
+        working-directory: proofs/comparator
+        run: |
+          export COMPARATOR_LANDRUN="$DEPS/landrun/landrun"
+          export COMPARATOR_LEAN4EXPORT="$DEPS/lean4export/.lake/build/bin/lean4export"
+          lake env "$DEPS/comparator/.lake/build/bin/comparator" config.json
 
   conformance:
     name: cross-language conformance (Python reference)
