@@ -152,6 +152,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+          # No go.sum in this repo (landrun is cloned below); the action's
+          # built-in module cache would only emit a warning.
+          cache: false
 
       - name: resolve dependency commits (cache keys)
         id: deps
