@@ -5,8 +5,6 @@ name: CI
 
 on:
   push:
-    # branch runs CI while it is being developed. Remove it (leaving [main])
-    # before merging this branch into main.
     branches: [main]
   pull_request:
 
