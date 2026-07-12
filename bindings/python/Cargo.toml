@@ -1,0 +1,18 @@
+[package]
+name = "bitrep-python"
+version = "0.2.0"
+edition = "2021"
+rust-version = "1.74"
+authors = ["Kyle Clouthier <kyle@simgen.dev>"]
+license = "MIT OR Apache-2.0"
+description = "Python bindings for bitrep: exact, order-invariant, bit-identical floating-point reductions and CRDTs."
+repository = "https://github.com/KyleClouthier/bitrep"
+
+[lib]
+name = "bitrep"
+crate-type = ["cdylib"]
+
+# Aliased to avoid colliding with this crate's own lib name `bitrep` (the Python module).
+[dependencies]
+bitrep_core = { package = "bitrep", path = "../..", features = ["stats", "receipts"] }
+pyo3 = { version = "0.22", features = ["extension-module"] }

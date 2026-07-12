@@ -17,6 +17,14 @@ exclude = ["/.github", "/fuzz", "/demo", "/.claude", "/probes", "/paper", "RESEA
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+# Language bindings (npm/wasm, PyPI/PyO3) live in the same repo as workspace
+# members; they path-depend on this core crate so they call the real engine.
+# demo/ and fuzz/ are standalone crates, kept out of the workspace.
+[workspace]
+members = ["bindings/wasm", "bindings/python"]
+exclude = ["demo", "fuzz"]
+resolver = "2"
+
 [features]
 default = ["std"]
 std = []
