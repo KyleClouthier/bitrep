@@ -7,3 +7,6 @@ probes/
 
 .env
 .env.*
+
+# Lean lake build artifacts (comparator proof project)
+proofs/comparator/.lake/

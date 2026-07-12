@@ -1,0 +1,16 @@
+# Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+# Lake project for the comparator CI job (see .github/workflows/ci.yml).
+#
+# Challenge.lean = the trusted statement spec (defs + theorems with `sorry`).
+# Solution.lean  = the real proofs: byte-for-byte the concatenation of
+#   ../OrderInvariance.lean ../RoundNearestEven.lean ../FloatGCounter.lean
+#   ../ToolkitAlgebra.lean  (CI enforces this with a diff).
+name = "bitrepproofs"
+version = "0.1.0"
+defaultTargets = ["Challenge", "Solution"]
+
+[[lean_lib]]
+name = "Challenge"
+
+[[lean_lib]]
+name = "Solution"
