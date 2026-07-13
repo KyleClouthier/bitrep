@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+* `RelSketch` (feature `quantile`) — a reproducible, byte-identical,
+  relative-error quantile sketch (DDSketch-family). Integer bit-shift bucket
+  mapping (no `libm log`), so buckets are identical across architectures; the
+  canonical state is order/shard/merge-invariant and signable via `state_hash`.
+  Delta-varint bucket encoding (~2.7 bytes/bucket, ~6× smaller than a flat
+  layout); an order-invariant collapse policy bounds memory under a hostile
+  all-exponent stream. OpenTelemetry / Prometheus exponential-histogram
+  correspondence (`otel_scale`/`from_otel`, `examples/otel_bridge.rs`).
+* Verification for the sketch: merge laws machine-checked in Lean 4
+  (`proofs/RelSketchMerge.lean`, wired through the comparator — now 37 audited
+  theorems); an adversarial red-team suite and a `quantile_decode` fuzz target;
+  real-data-shaped accuracy/size tests; and a second-language conformance
+  reference (`conformance/relsketch_ref.py`) reproducing the bytes byte-for-byte.
+
 ## 0.1.0 — 2026-07-11
 
 Initial release.

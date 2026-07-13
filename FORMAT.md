@@ -96,3 +96,41 @@ An implementation conforms iff, for `conformance/vectors.json`:
 1. accumulating each vector's inputs (any order) yields the listed
    289-byte state, and
 2. the rounded value equals the listed IEEE-754 bit pattern.
+
+## The RelSketch quantile format (feature `quantile`)
+
+A relative-error quantile sketch (DDSketch-family) with a canonical,
+byte-identical state. All multi-byte header fields are little-endian; bucket
+maps are delta-varint. `SUB_BITS` mantissa bits are kept per octave.
+
+**Bucket key** (positive `x`): `key = bits(x) >> SHIFT`, with
+`SHIFT = 52 − SUB_BITS + COLLAPSE`. Integer shift only — no `log`, so the key
+is identical on every architecture. Negative `x` uses `key(|x|)` in a separate
+map. Specials are out of band: `E = 0x7FF` with `frac ≠ 0` → NaN counter;
+`±∞` → their own counters; `±0.0` → the zero counter (both signs). `min`/`max`
+track the exact extrema over non-NaN samples by `total_cmp` order.
+
+**Encoding** (`to_bytes`):
+
+| field | size | meaning |
+|-------|------|---------|
+| `sub_bits` | 1 | mantissa bits kept (`1..=52`) |
+| `collapse` | 1 | resolution collapses applied (DoS guard; `0` for realistic data). `52 − sub_bits + collapse` MUST be `< 64` |
+| `mismatched` | 1 | `0`/`1`; a `sub_bits`-mismatched merge poisons the state. Any other value is invalid |
+| `nan`,`pos_inf`,`neg_inf`,`zero` | 8 each | out-of-band counters, u64 LE |
+| `min`,`max` | 8 each | IEEE bits of the exact extrema, u64 LE |
+| `count` | 8 | total `add`s (saturating), u64 LE |
+| `pos map` | varint | positive buckets |
+| `neg map` | varint | negative buckets (keyed by `|x|`) |
+
+A **bucket map** is `uvarint(len)`, then per bucket in ascending key order:
+`uvarint(delta)` then `uvarint(count)`. The first `delta` is the absolute key;
+each subsequent `delta` is the gap from the previous key (always `≥ 1`, so keys
+are strictly ascending). `uvarint` is minimal unsigned LEB128.
+
+Decoders MUST reject any non-canonical encoding — non-minimal varints, a `delta`
+of `0` (duplicate/unsorted key), a zero `count`, a key sum overflowing u64,
+`sub_bits` outside `1..=52`, a reconstruction shift `≥ 64`, a `mismatched` byte
+other than `0`/`1`, or trailing bytes — so that each state has exactly one
+encoding. `conformance/relsketch_vectors.json` + `conformance/relsketch_ref.py`
+(a second implementation, in Python) prove the format is language-neutral.

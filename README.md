@@ -302,6 +302,73 @@ one [`Mergeable`] trait so containers and transports are generic:
 * `state_hash` (feature `receipts`) — the canonical 32-byte commitment for
   signing converged aggregates.
 
+## Reproducible quantiles (feature `quantile`)
+
+Order statistics are the one aggregate outside the exact-monomial algebra:
+there is no exact mergeable representation of a median. The honest *exact*
+primitive is [`HistogramF64`]'s bucket **bounds**; the useful *approximate* one
+is [`RelSketch`], a relative-error quantile sketch whose **state is exact and
+byte-identical** even though the estimate is not.
+
+The sketch itself is **DDSketch** (Masson, Rim & Lee, PVLDB 2019,
+[arXiv:1908.10693](https://arxiv.org/abs/1908.10693)): map a value to a bucket
+by its logarithm, keep integer per-bucket counts, read a quantile off the
+bucket boundaries with a bounded **relative** error `alpha`. What bitrep adds is
+the same thing it adds for sums — a **canonical byte encoding** so that two
+sketches over the same multiset, in any order, any sharding, any merge tree, on
+any architecture, are byte-identical and therefore
+[`state_hash`](#verification)-identical. **A p99 you can sign, hash and
+content-address.** To get there without breaking bit-identity, RelSketch drops
+DDSketch's `log`-based mapping — `libm`'s `log` differs by an ULP across
+platforms, which silently reshuffles buckets — for DDSketch's own
+`BitwiseLinearlyInterpolatedMapping`: the bucket key is a pure right-shift of
+the IEEE-754 bits, `key = bits(x) >> (52 − sub_bits)`, integer-only and
+identical on every architecture (worst-case relative error `2^-(sub_bits+1)`).
+
+Measured on a realistic web-latency stream (lognormal body + heavy Pareto tail
++ periodic spikes), 2M samples, against the **exact** sorted quantile
+([`tests/quantile_realdata.rs`](tests/quantile_realdata.rs)):
+
+| target `alpha` | guarantee | buckets | serialized | vs raw f64 | worst rel-err (p50…p9999) |
+|---|---|---|---|---|---|
+| 1%   | 0.0078 | 715  | 1 862 B | ~8 600× smaller | 0.0064 |
+| 0.1% | 0.00098 | 4 494 | 10 859 B | ~1 470× smaller | 0.0007 |
+
+And on a **real** dataset — 6 427 NYC-taxi trip durations (heavy-tailed,
+2 s–6 460 s) — every measured error stays inside the guarantee too (≤ 0.0046 at
+1%, ≤ 0.00085 at 0.1%). The state is **constant in N**: the same few kilobytes
+whether you summarize a thousand requests or a trillion, and thousands of times
+smaller than the raw samples at scale. The **delta-varint** encoding
+(sorted keys stored as LEB128 gaps + varint counts) cut the state from a flat
+16 bytes/bucket to ~2.7, roughly 6× ([`FORMAT.md`](FORMAT.md)). A hostile stream
+spanning every exponent can't blow memory: past a bucket cap the resolution
+halves deterministically — a pure function of the multiset, so byte-identity
+survives the collapse (only the guarantee coarsens, and it says so).
+
+**Integrates with what you already run.** RelSketch's bit-shift mapping is the
+same *family* as OpenTelemetry exponential histograms / Prometheus native
+histograms: at `scale = sub_bits` they share resolution and octave alignment, so
+you can emit a signed RelSketch receipt alongside the histogram you already
+export ([`examples/otel_bridge.rs`](examples/otel_bridge.rs)). Honest caveat,
+measured in that example: the interior mapping is *not* identical — RelSketch
+interpolates the mantissa linearly (DDSketch's choice) while OTel spaces buckets
+geometrically, so a value's bucket index can differ by up to `≈ 0.086·2^scale`
+mid-octave; the two agree at power-of-two boundaries and both stay within the
+shared `alpha`, but a faithful conversion re-buckets rather than shifting
+indices.
+
+**When to reach for it, and when not.** RelSketch is the choice when you must
+**verify, sign or federate** a percentile — a receipt that recomputes
+byte-identically on every replica. It is *not* trying to beat t-digest on
+tail-quantile adaptivity, or the incumbent sketches on raw throughput; it
+trades those for a canonical, mergeable, signable state. The estimate carries
+relative error up to `alpha` (named limit, not hidden). The merge laws are
+machine-checked in [`proofs/RelSketchMerge.lean`](proofs/RelSketchMerge.lean),
+the format has a second-language reference
+([`conformance/relsketch_ref.py`](conformance/relsketch_ref.py)), and the whole
+thing is red-teamed ([`tests/quantile_redteam.rs`](tests/quantile_redteam.rs))
+and fuzzed.
+
 ## Demos that assert
 
 Two runnable constructions in [`examples/`](examples/) — each is a probe
@@ -336,14 +403,14 @@ independent method, so no single mistake can hide:
 
 | Layer | Tool | What it establishes |
 |---|---|---|
-| **Proof (math)** | **Lean 4** ([`proofs/`](proofs/), zero `sorry`, axiom-audited in CI) | Order/merge-tree/permutation invariance of exact accumulation; the rounding kernel is round-to-nearest-ties-to-even in full (half-ulp bound, minimality over *every* grid point, tie parity, exactness); the float-G-Counter convergence laws; and the toolkit merge algebra ([`proofs/ToolkitAlgebra.lean`](proofs/ToolkitAlgebra.lean)): products, per-key maps, min/max and boolean joins, saturating counters — the laws every v0.2 state instantiates |
+| **Proof (math)** | **Lean 4** ([`proofs/`](proofs/), zero `sorry`, axiom-audited in CI) | Order/merge-tree/permutation invariance of exact accumulation; the rounding kernel is round-to-nearest-ties-to-even in full (half-ulp bound, minimality over *every* grid point, tie parity, exactness); the float-G-Counter convergence laws; and the toolkit merge algebra ([`proofs/ToolkitAlgebra.lean`](proofs/ToolkitAlgebra.lean)): products, per-key maps, min/max and boolean joins, saturating counters — the laws every v0.2 state instantiates; and the RelSketch quantile-sketch bucket merge (commutative, associative, empty-identity) over the pointwise count-map model ([`proofs/RelSketchMerge.lean`](proofs/RelSketchMerge.lean)) |
 | **Statement spec** | **Lean FRO [comparator](https://github.com/leanprover/comparator)** ([`proofs/comparator/`](proofs/comparator/)) | *Did we prove what we claim?* [`Challenge.lean`](proofs/comparator/Challenge.lean) is a self-contained, human-auditable spec: every definition the statements depend on plus all 37 audited theorems restated with `sorry`. On every push, the comparator verifies the real proofs prove **exactly** those statements, use only the standard axiom base (`propext` / `Quot.sound` / `Classical.choice`), and replay in the Lean kernel — and CI separately asserts the solution file is byte-for-byte the five proof files. A reviewer only needs to read `Challenge.lean`. (Background: the Lean reference manual's [Validating a Lean Proof](https://lean-lang.org/doc/reference/latest/ValidatingProofs/) explains the comparator approach.) |
 | **Proof (bits)** | **Kani / CBMC** ([`src/kani_proofs.rs`](src/kani_proofs.rs)) | The Rust implementation's merges commute and associate and the codecs round-trip — for **all** inputs, symbolically, proven on every push (six harnesses: sum merge/codec + extrema merge laws/codec). Kani's first catch on v0.2: adversarial `ExtremaF64` decodes broke merge commutativity — the decoder now rejects non-canonical states. The add-path harnesses (add commutes, exact cancellation) decompose a symbolic f64 across all 34 limbs and are beyond CBMC's practical reach (did not close in ~3h on CI), so they're `kani_slow`-gated for local runs; those properties are proved at the model level in **Lean** and exercised by the oracle tests and the fuzzer |
 | **Differential fuzzing** | cargo-fuzz vs a BigInt oracle | 290M+ executions hunting order variance, oracle disagreement, codec breakage. Catches so far: a real `count`-overflow bug (fixed), a bug in **its own oracle** (`powi(-1067)` = 1/∞ = 0 — the crate was right), and on v0.2 a length-prefix overflow in the `CovMatrixF64` decoder, found in under a minute of fuzzing the new [`toolkit_decoders`](fuzz/fuzz_targets/toolkit_decoders.rs) target (fixed, with the crashing input kept in-tree under fuzz/artifacts as a regression record) |
 | **Independent oracle** | proptest + `BigInt` + a separately written IEEE reference rounding | Correct rounding on arbitrary finite inputs, subnormals and ±MAX included; f32 rounds once (no double-rounding) |
-| **Real datasets** | [NIST StRD NumAcc1–4](https://www.itl.nist.gov/div898/strd/univ/homepage.html) | Certified means reproduced to the representational limit (LRE ≥ 14.5) |
+| **Real datasets** | [NIST StRD NumAcc1–4](https://www.itl.nist.gov/div898/strd/univ/homepage.html); NYC-taxi trip durations; realistic web-latency | Certified means reproduced to the representational limit (LRE ≥ 14.5); RelSketch quantiles within the relative-error guarantee at p50…p9999 on heavy-tailed real and synthetic latency ([`tests/quantile_realdata.rs`](tests/quantile_realdata.rs)) |
 | **Cross-architecture** | golden SHA-256 vectors in CI | Identical hashes on x86-64 Linux, ARM64 macOS, x86-64 Windows and wasm32, over permutations and shardings, every commit |
-| **Cross-language** | [`FORMAT.md`](FORMAT.md) + pure-Python reference ([`conformance/`](conformance/)) | A second implementation in a second language reproduces the canonical bytes and rounded values exactly, from a spec — the format, proven portable |
+| **Cross-language** | [`FORMAT.md`](FORMAT.md) + pure-Python references ([`conformance/`](conformance/)) | A second implementation in a second language reproduces the canonical bytes and rounded values exactly, from a spec — the accumulator (`bitrep_ref.py`) and the RelSketch sketch (`relsketch_ref.py`), both proven portable |
 | **Supply chain** | cargo-deny · reproducible-build CI · signed SLSA provenance · OpenSSF Scorecard | The same thesis, applied to the build: dependencies are advisory/license/yanked-scanned on every push (`deny.toml`); the release `libbitrep.rlib` **rebuilds byte-for-byte** across independent build trees (`CARGO_INCREMENTAL=0`, `--remap-path-prefix`); published wheels, npm tarball and `.crate` carry keyless **Sigstore/SLSA provenance** on every tag; the repo's security posture is scored weekly |
 | **Hygiene** | Miri, clippy `-D warnings`, rustfmt, MSRV 1.74, `forbid(unsafe_code)`, zero runtime deps | The boring foundations |
 

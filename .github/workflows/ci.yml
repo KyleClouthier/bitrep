@@ -218,6 +218,12 @@ jobs:
         run: git diff --exit-code conformance/vectors.json
       - name: the pure-Python reference must reproduce them byte-for-byte
         run: python3 conformance/check.py
+      - name: regenerate the RelSketch vectors from the Rust crate
+        run: cargo run --features "quantile receipts" --example gen_relsketch_vectors
+      - name: RelSketch vectors must be unchanged (Rust output is canonical)
+        run: git diff --exit-code conformance/relsketch_vectors.json
+      - name: the pure-Python RelSketch reference must reproduce them byte-for-byte
+        run: python3 conformance/relsketch_check.py
 
   kani:
     name: kani (merge + codec harnesses)

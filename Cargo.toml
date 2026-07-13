@@ -73,6 +73,10 @@ required-features = ["quantile", "receipts"]
 name = "otel_bridge"
 required-features = ["quantile"]
 
+[[example]]
+name = "gen_relsketch_vectors"
+required-features = ["quantile", "receipts"]
+
 [[bench]]
 name = "reductions"
 harness = false
