@@ -5,8 +5,7 @@ name: CI
 
 on:
   push:
-    # TEMPORARY: relsketch-v04 added to exercise CI on the branch; remove before merge.
-    branches: [main, relsketch-v04]
+    branches: [main]
   pull_request:
 
 env:
