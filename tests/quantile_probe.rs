@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
-//! PROBE test harness for `RelSketch` (feature `probe`).
+//! Test harness for `RelSketch` (feature `quantile`).
 //!
 //! Four claims, measured (not asserted on faith):
 //!   1. BYTE-IDENTITY under insertion order, sharding and merge order — the
@@ -12,9 +12,9 @@
 //!      the concatenated data, over many random shard splits.
 //!   4. SIZE: serialized bytes vs distinct buckets, reported per distribution.
 //!
-//! Run: `cargo test --release --features "probe receipts" --test quantile_probe -- --nocapture`
+//! Run: `cargo test --release --features "quantile receipts" --test quantile_probe -- --nocapture`
 
-#![cfg(feature = "probe")]
+#![cfg(feature = "quantile")]
 
 use bitrep::{Mergeable, RelSketch};
 
@@ -99,9 +99,9 @@ fn byte_identity_under_order_shard_and_merge() {
         data.push(-pareto(&mut rng)); // negatives
     }
     for &x in &[
-        f64::MIN_POSITIVE,          // smallest normal
-        f64::MIN_POSITIVE / 2.0,    // a subnormal
-        5e-324,                     // smallest subnormal
+        f64::MIN_POSITIVE,       // smallest normal
+        f64::MIN_POSITIVE / 2.0, // a subnormal
+        5e-324,                  // smallest subnormal
         f64::MAX,
         1e300,
         1e-300,
@@ -126,7 +126,11 @@ fn byte_identity_under_order_shard_and_merge() {
     for seed in 0..25 {
         let mut d = data.clone();
         shuffle(&mut d, &mut Rng::new(seed + 1));
-        assert_eq!(build(&d, 0.01).to_bytes(), ref_bytes, "insertion order changed bytes");
+        assert_eq!(
+            build(&d, 0.01).to_bytes(),
+            ref_bytes,
+            "insertion order changed bytes"
+        );
     }
 
     // (b) shard K ways (K = 1..=13), merge in a shuffled order -> identical
@@ -153,7 +157,11 @@ fn byte_identity_under_order_shard_and_merge() {
         let last = shards.len() - 1;
         shards[last].merge(&b); // fold from the right: unbalanced tree
     }
-    assert_eq!(shards[0].to_bytes(), ref_bytes, "merge tree shape changed bytes");
+    assert_eq!(
+        shards[0].to_bytes(),
+        ref_bytes,
+        "merge tree shape changed bytes"
+    );
 
     println!(
         "[byte-identity] {} samples, {} buckets, {} bytes: identical across \
@@ -169,8 +177,11 @@ fn byte_identity_under_order_shard_and_merge() {
 // ---------------------------------------------------------------------------
 #[test]
 fn accuracy_within_guarantee() {
-    let dists: [Dist; 3] =
-        [("lognormal", lognormal), ("pareto(1.5)", pareto), ("bimodal", bimodal)];
+    let dists: [Dist; 3] = [
+        ("lognormal", lognormal),
+        ("pareto(1.5)", pareto),
+        ("bimodal", bimodal),
+    ];
     let qs = [0.5, 0.9, 0.95, 0.99, 0.999];
     let alpha = 0.01;
     let n = 1_000_000usize;
@@ -224,7 +235,11 @@ fn merge_equals_concatenation() {
         for s in &splits {
             merged.merge(s);
         }
-        assert_eq!(merged.to_bytes(), whole_bytes, "trial {trial}: merge != concat");
+        assert_eq!(
+            merged.to_bytes(),
+            whole_bytes,
+            "trial {trial}: merge != concat"
+        );
     }
     println!("\n[merge] 40 random splits (K=2..12): merged state byte-identical to whole.");
 }
@@ -234,10 +249,16 @@ fn merge_equals_concatenation() {
 // ---------------------------------------------------------------------------
 #[test]
 fn size_report() {
-    let dists: [Dist; 3] =
-        [("lognormal", lognormal), ("pareto(1.5)", pareto), ("bimodal", bimodal)];
+    let dists: [Dist; 3] = [
+        ("lognormal", lognormal),
+        ("pareto(1.5)", pareto),
+        ("bimodal", bimodal),
+    ];
     println!("\n[size] 1e6 samples, alpha = 0.01 (sub_bits = 6)");
-    println!("  {:<12} {:>8} {:>10} {:>12} {:>14}", "dist", "buckets", "bytes", "bytes/bkt", "vs raw f64");
+    println!(
+        "  {:<12} {:>8} {:>10} {:>12} {:>14}",
+        "dist", "buckets", "bytes", "bytes/bkt", "vs raw f64"
+    );
     for (name, f) in dists {
         let mut rng = Rng::new(0x512E_0000 ^ name.len() as u64);
         let data: Vec<f64> = (0..1_000_000).map(|_| f(&mut rng)).collect();
@@ -275,5 +296,9 @@ fn mapping_is_pure_integer_shift() {
     let kb = b.to_bits() >> shift;
     let kc = c.to_bits() >> shift;
     assert_eq!(ka, kb, "sub-prefix-equal values must share a bucket");
-    assert_eq!(kc, ka + 1, "crossing the prefix must step exactly one bucket");
+    assert_eq!(
+        kc,
+        ka + 1,
+        "crossing the prefix must step exactly one bucket"
+    );
 }

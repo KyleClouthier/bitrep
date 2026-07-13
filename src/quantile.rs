@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
-//! PROBE (feature `probe`): a reproducible, mergeable, byte-identical
+//! Feature `quantile`: a reproducible, mergeable, byte-identical
 //! relative-error quantile sketch.
 //!
-//! This is an **exploratory** module, gated behind the `probe` feature so it
-//! ships in no default build. It asks one question: can bitrep's
-//! "same bytes everywhere" contract be extended from exact reductions to an
-//! *approximate* quantile sketch (p50/p95/p99), the way every SRE/observability
-//! stack needs?
+//! Order statistics (p50/p95/p99) are outside the exact-monomial algebra the
+//! rest of the crate lives in — no exact mergeable representation exists (the
+//! honest exact primitive is [`HistogramF64`](crate::HistogramF64)'s bucket
+//! *bounds*). What *does* fit the crate's contract is an **approximate**
+//! sketch whose *state* is exact and byte-identical: the estimate carries a
+//! bounded relative error, but the bytes you sign do not.
 //!
 //! ## The idea
 //!
@@ -20,9 +21,10 @@
 //!
 //! bitrep's contribution is **not** the sketch. It is the same thing the
 //! superaccumulator does for sums: a **canonical byte encoding** of the sketch
-//! state (sparse buckets in sorted key order, little-endian, integer counts)
-//! so that two sketches over the same multiset — in any insertion order, any
-//! sharding, any merge tree — are **byte-identical** and therefore
+//! state (sparse buckets in sorted key order, delta-varint keys, little-endian
+//! header, integer counts) so that two sketches over the same multiset — in
+//! any insertion order, any sharding, any merge tree, on any architecture —
+//! are **byte-identical** and therefore
 //! [`state_hash`](crate::state_hash)-identical. A p99 you can sign, hash and
 //! content-address; identical on every replica and every shard order.
 //!
@@ -36,23 +38,25 @@
 //! different bytes. That silently breaks byte-identity, which is the whole
 //! point.
 //!
-//! So this probe does **not** use `log`. It uses DDSketch's own
+//! So this sketch does **not** use `log`. It uses DDSketch's own
 //! *BitwiseLinearlyInterpolatedMapping*: the bucket key is a pure right-shift
 //! of the IEEE-754 bit pattern,
 //!
 //! ```text
-//! key(x) = bits(x) >> (52 - SUB_BITS)   // x > 0, SUB_BITS mantissa bits kept
+//! key(x) = bits(x) >> (52 - sub_bits)   // x > 0, sub_bits mantissa bits kept
 //! ```
 //!
 //! Because positive `f64` bit patterns are monotonic in value, this is a
 //! monotone bucketing that splits each binade (power-of-two octave) into
-//! `2^SUB_BITS` equal-mantissa sub-buckets — linear interpolation of `log2`.
+//! `2^sub_bits` equal-mantissa sub-buckets — linear interpolation of `log2`.
 //! It is computed with **integer shifts only**: no floating rounding, no
 //! `libm`, bit-identical on every architecture that stores an `f64` as
 //! IEEE-754. The price is that buckets are geometric *per octave* and linear
 //! *within* an octave, so the relative error is not uniform; its worst case is
-//! `alpha = 2^-(SUB_BITS+1)`, attained at the bottom of each octave. That
-//! guarantee is what the probe tests measure.
+//! `alpha = 2^-(sub_bits+1)`, attained at the bottom of each octave. That
+//! guarantee is what the tests measure. This same integer mapping is, up to a
+//! choice of scale, the one OpenTelemetry exponential histograms and
+//! Prometheus native histograms use — see [`RelSketch::otel_scale`].
 //!
 //! ## Scope / named limits
 //!
@@ -60,9 +64,14 @@
 //!   bucket), like the accumulator's special-value flags. Exact zeros are a
 //!   dedicated counter. Negatives go in a separate bucket map.
 //! * `min`/`max` are tracked exactly (order-invariant extrema).
-//! * Merging two sketches with different `SUB_BITS` poisons the state (reported
+//! * Merging two sketches with different `sub_bits` poisons the state (reported
 //!   via `None` reads), never silently blended — same policy as
 //!   [`HistogramF64`](crate::HistogramF64).
+//! * A hostile stream spanning every exponent cannot blow memory: the bucket
+//!   count is capped at [`RelSketch::MAX_BUCKETS`] and, past that, resolution is
+//!   deterministically halved (a *collapse*, tracked in the state). Collapse is
+//!   a pure function of the multiset, so byte-identity survives it; it only
+//!   coarsens the guarantee — see [`RelSketch::guaranteed_alpha`].
 //! * This is an approximate sketch: quantile reads carry relative error up to
 //!   `alpha`. The *state* is exact and byte-identical; the *estimate* is not
 //!   the exact quantile. That distinction is deliberate and honest.
@@ -72,7 +81,7 @@ use std::collections::BTreeMap;
 
 /// A reproducible, mergeable, byte-identical relative-error quantile sketch.
 ///
-/// See the [module docs](self) for the model. Two sketches (same `sub_bits`)
+/// See the crate-level and module documentation for the model. Two sketches (same `sub_bits`)
 /// that received the same multiset — in any order, any sharding, any merge
 /// tree — return identical [`to_bytes`](Self::to_bytes) and therefore identical
 /// [`state_hash`](crate::state_hash).
@@ -80,6 +89,9 @@ use std::collections::BTreeMap;
 pub struct RelSketch {
     /// Mantissa bits kept in the bucket key: `2^sub_bits` sub-buckets / octave.
     sub_bits: u8,
+    /// Resolution collapses applied (DoS guard): stored keys are the ideal
+    /// keys right-shifted by this much. 0 for any non-adversarial input.
+    collapse_shift: u8,
     /// Positive-value buckets: key -> count, kept sorted (canonical order).
     pos: BTreeMap<u64, u64>,
     /// Negative-value buckets, keyed by the bucket key of `|x|`.
@@ -99,6 +111,13 @@ pub struct RelSketch {
 }
 
 impl RelSketch {
+    /// Maximum number of occupied buckets (positive + negative) before the
+    /// sketch collapses resolution to bound memory. Chosen so that a
+    /// worst-case adversarial stream (every exponent × sub-bucket) is held to
+    /// roughly a megabyte of state while ordinary metric data — a few thousand
+    /// buckets — never collapses at all.
+    pub const MAX_BUCKETS: usize = 1 << 16;
+
     /// A sketch with a worst-case relative accuracy of at least `alpha`
     /// (`0 < alpha < 1`). The number of mantissa bits kept is chosen as the
     /// smallest `s` with `2^-(s+1) <= alpha`; call
@@ -132,6 +151,7 @@ impl RelSketch {
         }
         Some(Self {
             sub_bits,
+            collapse_shift: 0,
             pos: BTreeMap::new(),
             neg: BTreeMap::new(),
             zero: 0,
@@ -145,22 +165,46 @@ impl RelSketch {
         })
     }
 
-    /// The guaranteed worst-case relative error, `2^-(sub_bits+1)`.
+    /// The guaranteed worst-case relative error at the sketch's *current*
+    /// resolution, `2^-(sub_bits - collapse_shift + 1)`. Equals `2^-(sub_bits+1)`
+    /// for any input that never triggered a collapse (all realistic data);
+    /// after `k` collapses the guarantee coarsens by a factor of `2^k`.
     pub fn guaranteed_alpha(&self) -> f64 {
-        (0.5f64).powi(self.sub_bits as i32 + 1)
+        let eff = self.sub_bits as i32 - self.collapse_shift as i32;
+        if eff <= 0 {
+            1.0
+        } else {
+            (0.5f64).powi(eff + 1)
+        }
     }
 
-    /// Mantissa bits kept in the bucket key.
+    /// Mantissa bits kept in the bucket key at construction.
     pub const fn sub_bits(&self) -> u8 {
         self.sub_bits
     }
 
+    /// Resolution collapses applied so far (0 for any non-adversarial input).
+    /// The effective resolution is `sub_bits - collapse_shift` mantissa bits.
+    pub const fn collapse_shift(&self) -> u8 {
+        self.collapse_shift
+    }
+
+    /// The bit-shift applied to `f64` bits to form a stored bucket key,
+    /// `52 - sub_bits + collapse_shift`. This is the exponent-of-two the OTel
+    /// / Prometheus exponential-histogram `scale` is defined against — see
+    /// [`otel_scale`](Self::otel_scale).
+    #[inline]
+    pub const fn effective_shift(&self) -> u32 {
+        52 - self.sub_bits as u32 + self.collapse_shift as u32
+    }
+
     /// The bucket key for a strictly-positive finite `x`: a pure shift of the
-    /// IEEE-754 bits (integer-only, reproducible on every architecture).
+    /// IEEE-754 bits (integer-only, reproducible on every architecture),
+    /// already coarsened by any collapse in effect.
     #[inline]
     fn key_of_positive(&self, x: f64) -> u64 {
         debug_assert!(x > 0.0 && x.is_finite());
-        x.to_bits() >> (52 - self.sub_bits as u32)
+        x.to_bits() >> self.effective_shift()
     }
 
     /// Add one sample. Order never matters.
@@ -187,10 +231,42 @@ impl RelSketch {
             let k = self.key_of_positive(x);
             let e = self.pos.entry(k).or_insert(0);
             *e = e.saturating_add(1);
+            self.enforce_bucket_cap();
         } else {
             let k = self.key_of_positive(-x);
             let e = self.neg.entry(k).or_insert(0);
             *e = e.saturating_add(1);
+            self.enforce_bucket_cap();
+        }
+    }
+
+    /// Collapse one map (`key -> key >> 1`, summing counts). Halving the key
+    /// space is a pure function of the map: applying it to the same multiset,
+    /// however that multiset was accumulated, yields the same result.
+    fn collapse_map(m: &BTreeMap<u64, u64>) -> BTreeMap<u64, u64> {
+        let mut out = BTreeMap::new();
+        for (&k, &c) in m.iter() {
+            let e = out.entry(k >> 1).or_insert(0u64);
+            *e = e.saturating_add(c);
+        }
+        out
+    }
+
+    /// Restore the bucket-count invariant by halving resolution until the
+    /// occupied-bucket count is within [`MAX_BUCKETS`](Self::MAX_BUCKETS).
+    /// Confluent: the number of collapses needed is a function of the final
+    /// multiset (the smallest shift whose key-image fits the cap), so any
+    /// order/sharding/merge-tree reaches the same collapsed state.
+    fn enforce_bucket_cap(&mut self) {
+        while self.pos.len() + self.neg.len() > Self::MAX_BUCKETS {
+            // Never let the reconstruction shift reach 64 (would be UB in a
+            // raw shift); at that point resolution is already annihilated.
+            if self.effective_shift() + 1 >= 64 {
+                break;
+            }
+            self.collapse_shift += 1;
+            self.pos = Self::collapse_map(&self.pos);
+            self.neg = Self::collapse_map(&self.neg);
         }
     }
 
@@ -211,14 +287,21 @@ impl RelSketch {
 
     /// The `[lo, hi)` float range covered by a positive bucket `key`.
     fn range_of_key(&self, key: u64) -> (f64, f64) {
-        let shift = 52 - self.sub_bits as u32;
-        let lo = f64::from_bits(key << shift);
-        let hi = f64::from_bits((key + 1) << shift);
+        let shift = self.effective_shift();
+        let lo = key
+            .checked_shl(shift)
+            .map(f64::from_bits)
+            .unwrap_or(f64::INFINITY);
+        let hi = (key + 1)
+            .checked_shl(shift)
+            .map(f64::from_bits)
+            .unwrap_or(f64::INFINITY);
         (lo, hi)
     }
 
     /// A deterministic representative value for a positive bucket: the
-    /// arithmetic midpoint of its range (max relative error `2^-(sub_bits+1)`).
+    /// arithmetic midpoint of its range (max relative error at the current
+    /// resolution).
     fn representative(&self, key: u64) -> f64 {
         let (lo, hi) = self.range_of_key(key);
         if hi.is_finite() {
@@ -232,7 +315,7 @@ impl RelSketch {
     /// [`guaranteed_alpha`](Self::guaranteed_alpha). Uses the nearest-rank
     /// definition (same convention as [`HistogramF64`](crate::HistogramF64)),
     /// evaluated over the exact integer bucket counts, so the read is
-    /// deterministic. `None` if empty or poisoned.
+    /// deterministic. `None` if empty, poisoned, or `q` is outside `[0, 1]`.
     pub fn quantile(&self, q: f64) -> Option<f64> {
         if self.mismatched || !(0.0..=1.0).contains(&q) {
             return None;
@@ -303,12 +386,120 @@ impl RelSketch {
         self.pos.len() + self.neg.len()
     }
 
+    // -- OpenTelemetry / Prometheus exponential-histogram correspondence -----
+
+    /// The OpenTelemetry / Prometheus exponential-histogram **scale** whose
+    /// bucket boundaries coincide with this sketch's octave sub-bucketing.
+    ///
+    /// OTel scale `s` uses base `2^(2^-s)`, i.e. `2^s` buckets per power of two.
+    /// This sketch keeps `sub_bits - collapse_shift` mantissa bits, i.e.
+    /// `2^(sub_bits - collapse_shift)` sub-buckets per octave. The two layouts
+    /// have the same **resolution and octave alignment** exactly when
+    /// `scale = sub_bits - collapse_shift`.
+    ///
+    /// They are **not** the same mapping inside an octave: OTel spaces interior
+    /// boundaries geometrically (`base^i`), this sketch spaces them by linear
+    /// mantissa interpolation (DDSketch's `BitwiseLinearlyInterpolatedMapping`).
+    /// A value's sub-bucket index therefore differs by up to
+    /// `≈ 0.0861 · 2^scale` mid-octave, coinciding at power-of-two boundaries up
+    /// to the one-bucket upper-vs-lower-inclusive convention offset. Both bound
+    /// the relative error by `~2^-(scale+1)`, so the histograms are
+    /// interchangeable within that error, but a faithful conversion re-buckets
+    /// through the mapping rather than shifting indices. See
+    /// `examples/otel_bridge.rs`, which measures the gap.
+    pub fn otel_scale(&self) -> i32 {
+        self.sub_bits as i32 - self.collapse_shift as i32
+    }
+
+    /// The positive buckets as `(index, count)` pairs, ascending by index, in
+    /// this sketch's own exponential-histogram layout at
+    /// [`otel_scale`](Self::otel_scale): the index is the sketch key minus the
+    /// key of `1.0`, so index `0` is the sub-bucket at `[1.0, …)`.
+    ///
+    /// This layout is a bijection with the buckets, so it round-trips exactly
+    /// through [`from_otel`](Self::from_otel) — emit it alongside the histogram
+    /// you already export to attach a signed [`state_hash`](crate::state_hash).
+    /// It shares OTel/Prometheus resolution and octave alignment but keeps this
+    /// sketch's linear interior mapping (see [`otel_scale`](Self::otel_scale)),
+    /// so it is not identical to an OTel geometric index array.
+    pub fn otel_positive_indices(&self) -> Vec<(i64, u64)> {
+        let one_key = 1.0f64.to_bits() >> self.effective_shift();
+        self.pos
+            .iter()
+            .map(|(&k, &c)| (k as i64 - one_key as i64, c))
+            .collect()
+    }
+
+    /// The negative buckets as `(otel_index, count)` pairs (index computed from
+    /// `|x|`, as OTel records negatives in a separate `negative` field).
+    pub fn otel_negative_indices(&self) -> Vec<(i64, u64)> {
+        let one_key = 1.0f64.to_bits() >> self.effective_shift();
+        self.neg
+            .iter()
+            .map(|(&k, &c)| (k as i64 - one_key as i64, c))
+            .collect()
+    }
+
+    /// Rebuild the **bucket structure** of a sketch from OTel-style
+    /// `(index, count)` arrays (as produced by
+    /// [`otel_positive_indices`](Self::otel_positive_indices) /
+    /// [`otel_negative_indices`](Self::otel_negative_indices)) at the given
+    /// `sub_bits`. The exponential-histogram layout carries only the buckets:
+    /// specials (zero/NaN/±∞) and exact extrema are not part of it and start
+    /// empty (`count` is set to the reconstructed bucket mass). Returns `None`
+    /// on a malformed layout — `sub_bits` out of range, non-ascending or
+    /// duplicate indices, zero counts, or an index that maps outside the key
+    /// space. Round-trips the bucket layer exactly, so an exporter can attach a
+    /// signed [`state_hash`](crate::state_hash) to the histogram it already
+    /// emits.
+    pub fn from_otel(
+        sub_bits: u8,
+        positive: &[(i64, u64)],
+        negative: &[(i64, u64)],
+    ) -> Option<Self> {
+        let mut s = Self::with_sub_bits(sub_bits)?;
+        let one_key = (1.0f64.to_bits() >> s.effective_shift()) as i64;
+        fn build(arr: &[(i64, u64)], one_key: i64) -> Option<BTreeMap<u64, u64>> {
+            let mut m = BTreeMap::new();
+            let mut prev: Option<i64> = None;
+            for &(idx, c) in arr {
+                if c == 0 {
+                    return None;
+                }
+                if prev.is_some_and(|p| idx <= p) {
+                    return None; // indices must be strictly ascending / unique
+                }
+                prev = Some(idx);
+                let key = one_key.checked_add(idx)?;
+                if key < 0 {
+                    return None;
+                }
+                m.insert(key as u64, c);
+            }
+            Some(m)
+        }
+        s.pos = build(positive, one_key)?;
+        s.neg = build(negative, one_key)?;
+        s.count = s
+            .pos
+            .values()
+            .chain(s.neg.values())
+            .fold(0u64, |a, &c| a.saturating_add(c));
+        Some(s)
+    }
+
+    // -- Canonical encoding --------------------------------------------------
+
     /// Canonical byte encoding: equal multisets (same `sub_bits`) ⇒ equal
-    /// bytes. Buckets are written in sorted key order; every field is
-    /// little-endian; counts are integers. Hash or sign this.
+    /// bytes. Buckets are written in sorted key order as **delta-varint** keys
+    /// (LEB128 gaps, always minimal) and varint counts; every header field is
+    /// little-endian. Hash or sign this. Roughly halves the 16-bytes/bucket of
+    /// a flat `(u64, u64)` layout because sorted keys have small gaps and
+    /// counts fit in one or two bytes.
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut out = Vec::new();
         out.push(self.sub_bits);
+        out.push(self.collapse_shift);
         out.push(self.mismatched as u8);
         out.extend_from_slice(&self.nan.to_le_bytes());
         out.extend_from_slice(&self.pos_inf.to_le_bytes());
@@ -317,25 +508,40 @@ impl RelSketch {
         out.extend_from_slice(&self.min.to_bits().to_le_bytes());
         out.extend_from_slice(&self.max.to_bits().to_le_bytes());
         out.extend_from_slice(&self.count.to_le_bytes());
-        out.extend_from_slice(&(self.pos.len() as u32).to_le_bytes());
-        for (&k, &c) in self.pos.iter() {
-            out.extend_from_slice(&k.to_le_bytes());
-            out.extend_from_slice(&c.to_le_bytes());
-        }
-        out.extend_from_slice(&(self.neg.len() as u32).to_le_bytes());
-        for (&k, &c) in self.neg.iter() {
-            out.extend_from_slice(&k.to_le_bytes());
-            out.extend_from_slice(&c.to_le_bytes());
-        }
+        Self::write_map(&mut out, &self.pos);
+        Self::write_map(&mut out, &self.neg);
         out
     }
 
+    /// Write a bucket map as varint length, then delta-varint keys + varint
+    /// counts. The first key is stored absolutely; subsequent keys as the gap
+    /// from the previous (always `>= 1` since keys are strictly ascending).
+    fn write_map(out: &mut Vec<u8>, m: &BTreeMap<u64, u64>) {
+        write_uvarint(out, m.len() as u64);
+        let mut prev: Option<u64> = None;
+        for (&k, &c) in m.iter() {
+            let delta = match prev {
+                None => k,
+                Some(p) => k - p, // strictly ascending ⇒ k > p
+            };
+            write_uvarint(out, delta);
+            write_uvarint(out, c);
+            prev = Some(k);
+        }
+    }
+
     /// Decode a canonical encoding produced by [`to_bytes`](Self::to_bytes).
-    /// Rejects malformed input (bad lengths, out-of-range `sub_bits`,
-    /// non-ascending or duplicate bucket keys).
+    ///
+    /// **Strict**: rejects every non-canonical encoding — non-minimal varints,
+    /// unsorted or duplicate keys (delta `0`), zero counts, out-of-range
+    /// `sub_bits`/`collapse_shift`, trailing bytes, and key sums that overflow
+    /// `u64`. A decoder that accepted a non-canonical form would let two
+    /// distinct byte strings decode to the same state, breaking the
+    /// merge-law/receipt guarantee — the class of bug Kani caught on the v0.2
+    /// [`ExtremaF64`](crate::ExtremaF64) decoder.
     pub fn from_bytes(bytes: &[u8]) -> Option<Self> {
-        // fixed header: 1 + 1 + 8*6 + 4 = 54 bytes, then pos section.
-        const HEAD: usize = 1 + 1 + 8 * 6 + 4;
+        // fixed header: sub_bits + collapse_shift + mismatched + 4×u64 + 2×f64bits + count
+        const HEAD: usize = 1 + 1 + 1 + 8 * 4 + 8 * 2 + 8;
         if bytes.len() < HEAD {
             return None;
         }
@@ -343,65 +549,40 @@ impl RelSketch {
         if sub_bits == 0 || sub_bits > 52 {
             return None;
         }
-        let mismatched = match bytes[1] {
+        let collapse_shift = bytes[1];
+        // The reconstruction shift must stay < 64 (a raw shift of 64 is UB);
+        // this is exactly the invariant enforce_bucket_cap maintains.
+        if 52 - sub_bits as u32 + collapse_shift as u32 >= 64 {
+            return None;
+        }
+        let mismatched = match bytes[2] {
             0 => false,
             1 => true,
             _ => return None,
         };
-        let mut at = 2;
-        let rd8 = |at: &mut usize| -> u64 {
+        let mut at = 3;
+        let rd8 = |bytes: &[u8], at: &mut usize| -> u64 {
             let mut w = [0u8; 8];
             w.copy_from_slice(&bytes[*at..*at + 8]);
             *at += 8;
             u64::from_le_bytes(w)
         };
-        let nan = rd8(&mut at);
-        let pos_inf = rd8(&mut at);
-        let neg_inf = rd8(&mut at);
-        let zero = rd8(&mut at);
-        let min = f64::from_bits(rd8(&mut at));
-        let max = f64::from_bits(rd8(&mut at));
-        let count = rd8(&mut at);
+        let nan = rd8(bytes, &mut at);
+        let pos_inf = rd8(bytes, &mut at);
+        let neg_inf = rd8(bytes, &mut at);
+        let zero = rd8(bytes, &mut at);
+        let min = f64::from_bits(rd8(bytes, &mut at));
+        let max = f64::from_bits(rd8(bytes, &mut at));
+        let count = rd8(bytes, &mut at);
 
-        let read_map = |at: &mut usize| -> Option<BTreeMap<u64, u64>> {
-            if bytes.len() < *at + 4 {
-                return None;
-            }
-            let mut w4 = [0u8; 4];
-            w4.copy_from_slice(&bytes[*at..*at + 4]);
-            *at += 4;
-            let n = u32::from_le_bytes(w4) as usize;
-            let need = n.checked_mul(16)?;
-            if bytes.len() < at.checked_add(need)? {
-                return None;
-            }
-            let mut map = BTreeMap::new();
-            let mut prev: Option<u64> = None;
-            for _ in 0..n {
-                let mut w = [0u8; 8];
-                w.copy_from_slice(&bytes[*at..*at + 8]);
-                let key = u64::from_le_bytes(w);
-                *at += 8;
-                w.copy_from_slice(&bytes[*at..*at + 8]);
-                let cnt = u64::from_le_bytes(w);
-                *at += 8;
-                // canonical form is strictly ascending, no zero counts
-                if cnt == 0 || prev.is_some_and(|p| key <= p) {
-                    return None;
-                }
-                prev = Some(key);
-                map.insert(key, cnt);
-            }
-            Some(map)
-        };
-
-        let pos = read_map(&mut at)?;
-        let neg = read_map(&mut at)?;
+        let pos = read_map(bytes, &mut at)?;
+        let neg = read_map(bytes, &mut at)?;
         if at != bytes.len() {
-            return None;
+            return None; // trailing bytes are not canonical
         }
         Some(Self {
             sub_bits,
+            collapse_shift,
             pos,
             neg,
             zero,
@@ -416,20 +597,110 @@ impl RelSketch {
     }
 }
 
+/// Append `v` as an unsigned LEB128 varint (minimal by construction).
+fn write_uvarint(out: &mut Vec<u8>, mut v: u64) {
+    loop {
+        let byte = (v & 0x7f) as u8;
+        v >>= 7;
+        if v == 0 {
+            out.push(byte);
+            return;
+        }
+        out.push(byte | 0x80);
+    }
+}
+
+/// Read a **strict canonical** unsigned LEB128 varint: rejects overlong /
+/// non-minimal encodings (a multi-byte encoding whose terminating group is
+/// zero) and any encoding that would overflow `u64`.
+fn read_uvarint(bytes: &[u8], at: &mut usize) -> Option<u64> {
+    let mut result: u64 = 0;
+    let mut shift: u32 = 0;
+    loop {
+        let b = *bytes.get(*at)?;
+        *at += 1;
+        let low = (b & 0x7f) as u64;
+        if shift >= 64 {
+            return None; // more groups than u64 can hold
+        }
+        // A group at shift 63 may only carry the single remaining bit.
+        if shift == 63 && low > 1 {
+            return None;
+        }
+        result |= low << shift;
+        if b & 0x80 == 0 {
+            // Terminating group. Minimal encoding: the terminator is zero only
+            // when it is the whole encoding (the value 0). Any multi-byte
+            // encoding ending in a zero group is overlong ⇒ reject.
+            if b == 0 && shift != 0 {
+                return None;
+            }
+            return Some(result);
+        }
+        shift += 7;
+    }
+}
+
+/// Read a bucket map written by [`RelSketch::write_map`], enforcing every
+/// canonical-form invariant (see [`RelSketch::from_bytes`]).
+fn read_map(bytes: &[u8], at: &mut usize) -> Option<BTreeMap<u64, u64>> {
+    let n = read_uvarint(bytes, at)?;
+    let mut map = BTreeMap::new();
+    let mut prev: Option<u64> = None;
+    for _ in 0..n {
+        let delta = read_uvarint(bytes, at)?;
+        let key = match prev {
+            None => delta,
+            Some(p) => {
+                if delta == 0 {
+                    return None; // duplicate / non-ascending key
+                }
+                p.checked_add(delta)? // key sum must not overflow u64
+            }
+        };
+        let cnt = read_uvarint(bytes, at)?;
+        if cnt == 0 {
+            return None; // a canonical map never stores an empty bucket
+        }
+        prev = Some(key);
+        map.insert(key, cnt);
+    }
+    Some(map)
+}
+
 impl Mergeable for RelSketch {
     /// Sum bucket counts pairwise (commutative, associative, deterministic).
-    /// A `sub_bits` mismatch poisons the state, never silently blends.
+    /// A `sub_bits` mismatch poisons the state, never silently blends. If the
+    /// two sides sit at different collapse levels they are first brought to the
+    /// coarser common resolution, so the merge stays a pure function of the
+    /// combined multiset.
     fn merge(&mut self, other: &Self) {
         if self.sub_bits != other.sub_bits {
             self.mismatched = true;
             return;
         }
         self.mismatched |= other.mismatched;
-        for (&k, &c) in other.pos.iter() {
+
+        // Bring both operands to the coarser of the two collapse levels.
+        let target = self.collapse_shift.max(other.collapse_shift);
+        while self.collapse_shift < target {
+            self.collapse_shift += 1;
+            self.pos = Self::collapse_map(&self.pos);
+            self.neg = Self::collapse_map(&self.neg);
+        }
+        let (mut o_pos, mut o_neg) = (other.pos.clone(), other.neg.clone());
+        let mut oc = other.collapse_shift;
+        while oc < target {
+            o_pos = Self::collapse_map(&o_pos);
+            o_neg = Self::collapse_map(&o_neg);
+            oc += 1;
+        }
+
+        for (&k, &c) in o_pos.iter() {
             let e = self.pos.entry(k).or_insert(0);
             *e = e.saturating_add(c);
         }
-        for (&k, &c) in other.neg.iter() {
+        for (&k, &c) in o_neg.iter() {
             let e = self.neg.entry(k).or_insert(0);
             *e = e.saturating_add(c);
         }
@@ -444,6 +715,9 @@ impl Mergeable for RelSketch {
             self.max = other.max;
         }
         self.count = self.count.saturating_add(other.count);
+
+        // The combined map may exceed the cap even if neither operand did.
+        self.enforce_bucket_cap();
     }
 
     fn count(&self) -> u64 {
@@ -514,7 +788,15 @@ mod tests {
     #[test]
     fn specials_are_out_of_band() {
         let mut s = RelSketch::new(0.01).unwrap();
-        for x in [1.0, 2.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 0.0, -3.0] {
+        for x in [
+            1.0,
+            2.0,
+            f64::NAN,
+            f64::INFINITY,
+            f64::NEG_INFINITY,
+            0.0,
+            -3.0,
+        ] {
             s.add(x);
         }
         assert_eq!(s.nan_count(), 1);
@@ -544,5 +826,22 @@ mod tests {
         a.add(1.0);
         a.merge(&b);
         assert_eq!(a.quantile(0.5), None);
+    }
+
+    #[test]
+    fn varint_roundtrip_minimal() {
+        for v in [0u64, 1, 127, 128, 300, u64::MAX, u64::MAX - 1, 1 << 63] {
+            let mut buf = Vec::new();
+            write_uvarint(&mut buf, v);
+            let mut at = 0;
+            assert_eq!(read_uvarint(&buf, &mut at), Some(v));
+            assert_eq!(at, buf.len());
+        }
+        // non-minimal (overlong) encoding of 0 must be rejected
+        let mut at = 0;
+        assert_eq!(read_uvarint(&[0x80, 0x00], &mut at), None);
+        // overlong encoding of 1 must be rejected
+        let mut at = 0;
+        assert_eq!(read_uvarint(&[0x81, 0x00], &mut at), None);
     }
 }

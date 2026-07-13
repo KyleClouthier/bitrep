@@ -98,6 +98,12 @@
 //!   **exactly rounded** reads (mean, variance, kurtosis, covariance,
 //!   regression slope/intercept, R²), derived from the exact integer state
 //!   with a single final rounding.
+//! * [`RelSketch`] (feature `quantile`): a reproducible, byte-identical
+//!   relative-error quantile sketch (DDSketch-family) for p50/p95/p99. The
+//!   *state* is exact and order/shard/merge-invariant — a percentile you can
+//!   sign; the *estimate* carries a bounded relative error `alpha`. Uses an
+//!   integer bit-shift mapping (no `libm log`) so buckets are identical across
+//!   architectures.
 //! * NaN/±∞ are tracked as flags (any NaN, or +∞ and −∞ together, yields NaN;
 //!   a single infinity sign is preserved). An exactly-zero sum returns `+0.0`
 //!   (canonical zero: `-0.0` inputs are sign-preserving in IEEE addition only
@@ -126,7 +132,7 @@ mod hist;
 mod kani_proofs;
 mod lattice;
 mod merge;
-#[cfg(feature = "probe")]
+#[cfg(feature = "quantile")]
 mod quantile;
 #[cfg(feature = "receipts")]
 mod receipt;
@@ -145,7 +151,7 @@ pub use fast::FastSumF64;
 pub use hist::HistogramF64;
 pub use lattice::ExtremaF64;
 pub use merge::Mergeable;
-#[cfg(feature = "probe")]
+#[cfg(feature = "quantile")]
 pub use quantile::RelSketch;
 #[cfg(feature = "receipts")]
 pub use receipt::state_hash;

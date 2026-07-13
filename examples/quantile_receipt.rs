@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
-//! PROBE demo: a p99 you can sign — byte-identical on every shard order.
+//! Demo: a p99 you can sign — byte-identical on every shard order.
 //!
-//! Run: `cargo run --release --features "probe receipts" --example quantile_receipt`
+//! Run: `cargo run --release --features "quantile receipts" --example quantile_receipt`
 
 use bitrep::{state_hash, Mergeable, RelSketch};
 
@@ -60,13 +60,22 @@ fn main() {
     // Accuracy against the exact sorted quantile.
     let mut sorted = data.clone();
     sorted.sort_by(f64::total_cmp);
-    println!("\n quantile   exact        estimate     rel.error   (guarantee {:.4})", seq.guaranteed_alpha());
+    println!(
+        "\n quantile   exact        estimate     rel.error   (guarantee {:.4})",
+        seq.guaranteed_alpha()
+    );
     for &q in &[0.5, 0.9, 0.95, 0.99, 0.999] {
         let idx = ((q * sorted.len() as f64).ceil() as usize).clamp(1, sorted.len()) - 1;
         let exact = sorted[idx];
         let est = seq.quantile(q).unwrap();
         let rel = (est - exact).abs() / exact.abs();
-        println!("  p{:<7} {:>10.4}   {:>10.4}   {:>9.5}", (q * 100.0), exact, est, rel);
+        println!(
+            "  p{:<7} {:>10.4}   {:>10.4}   {:>9.5}",
+            (q * 100.0),
+            exact,
+            est,
+            rel
+        );
     }
 }
 

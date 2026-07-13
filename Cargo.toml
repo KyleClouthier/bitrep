@@ -36,9 +36,10 @@ stats = ["std", "dep:num-bigint", "dep:num-traits"]
 # Receipts: canonical state hashes (SHA-256 of the canonical encoding) for
 # signing convergent aggregates. Bring your own signature scheme.
 receipts = ["std", "dep:sha2"]
-# PROBE (exploratory, ships in no default build): RelSketch, a reproducible,
-# byte-identical, mergeable relative-error quantile sketch (DDSketch-family).
-probe = ["std"]
+# Quantile sketch: RelSketch, a reproducible, byte-identical, mergeable
+# relative-error quantile sketch (DDSketch-family). Needs std for the sparse
+# bucket map. Ships in --all-features; off in the no_std build.
+quantile = ["std"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)", "cfg(kani_slow)"] }
@@ -66,7 +67,11 @@ required-features = ["stats"]
 
 [[example]]
 name = "quantile_receipt"
-required-features = ["probe", "receipts"]
+required-features = ["quantile", "receipts"]
+
+[[example]]
+name = "otel_bridge"
+required-features = ["quantile"]
 
 [[bench]]
 name = "reductions"
