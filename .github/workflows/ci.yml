@@ -5,7 +5,7 @@ name: CI
 
 on:
   push:
-    branches: [main, proof-cleanup] # TEMPORARY: remove proof-cleanup before merge
+    branches: [main]
   pull_request:
 
 env:
