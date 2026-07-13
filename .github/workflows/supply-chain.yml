@@ -12,20 +12,27 @@ name: supply-chain
 
 on:
   push:
-    branches: [main]
+    # TEMPORARY: scorecard-hardening added to verify this workflow on the branch.
+    # REMOVE `scorecard-hardening` before merge.
+    branches: [main, scorecard-hardening]
   pull_request:
 
 env:
   CARGO_TERM_COLOR: always
+
+# Least privilege: all jobs only read the repo. The Codecov upload uses
+# CODECOV_TOKEN (a secret), not the workflow GITHUB_TOKEN, so needs no extra scope.
+permissions:
+  contents: read
 
 jobs:
   cargo-deny:
     name: cargo-deny (advisories + licenses + bans + sources)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: cargo deny check
-        uses: EmbarkStudios/cargo-deny-action@v2
+        uses: EmbarkStudios/cargo-deny-action@e2f4ede4a4e60ea15ff31bc0647485d80c66cfba # v2.0.4
         with:
           command: check
           # deny.toml at the repo root is the source of truth for the policy.
@@ -52,13 +59,13 @@ jobs:
       CARGO_INCREMENTAL: "0"
       SOURCE_DATE_EPOCH: "1700000000"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: build-a
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           path: build-b
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable branch (tracks current stable)
       - name: build A
         working-directory: build-a
         run: RUSTFLAGS="--remap-path-prefix=$PWD=/bitrep" cargo build --release --all-features -p bitrep
@@ -81,11 +88,11 @@ jobs:
     name: coverage (llvm-cov -> Codecov)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable branch (tracks current stable)
         with:
           components: llvm-tools-preview
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@acd25891978b4cdaebd139d3efef606d26513b14 # v2.47.0
         with:
           tool: cargo-llvm-cov
       - name: generate lcov coverage
@@ -94,7 +101,7 @@ jobs:
         # pull pyo3/wasm-bindgen build machinery that adds nothing to coverage).
         run: cargo llvm-cov -p bitrep --all-features --lcov --output-path lcov.info
       - name: upload to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@1e68e06f1dbfde0e4cefc87efeba9e4643565303 # v5.1.2
         with:
           files: lcov.info
           # Owner must enable the repo on codecov.io and (for a private repo)
