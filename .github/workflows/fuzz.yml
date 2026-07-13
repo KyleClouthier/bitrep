@@ -25,7 +25,7 @@ jobs:
         # Keep in sync with fuzz/fuzz_targets/ (fuzz/Cargo.toml [[bin]] entries).
         target: [sum_vs_oracle, codec_robustness, toolkit_decoders]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # libFuzzer / cargo-fuzz needs a nightly toolchain for the sanitizer flags.
       - uses: dtolnay/rust-toolchain@nightly
         with:
@@ -40,7 +40,7 @@ jobs:
         run: cargo fuzz run --target x86_64-unknown-linux-gnu ${{ matrix.target }} -- -max_total_time=300 -rss_limit_mb=4096
       - name: upload crash artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fuzz-crash-${{ matrix.target }}
           path: fuzz/artifacts/${{ matrix.target }}/

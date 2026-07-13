@@ -24,8 +24,8 @@ jobs:
       matrix:
         target: [x86_64, aarch64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -34,7 +34,7 @@ jobs:
           args: --release --out dist ${{ env.PY_MANIFEST }}
           sccache: "true"
           manylinux: auto
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheels-linux-${{ matrix.target }}
           path: dist
@@ -42,14 +42,14 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - uses: PyO3/maturin-action@v1
         with:
           args: --release --out dist ${{ env.PY_MANIFEST }}
           sccache: "true"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheels-windows
           path: dist
@@ -60,15 +60,15 @@ jobs:
       matrix:
         target: [x86_64, aarch64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
         with: { python-version: "3.11" }
       - uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           args: --release --out dist ${{ env.PY_MANIFEST }}
           sccache: "true"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheels-macos-${{ matrix.target }}
           path: dist
@@ -76,12 +76,12 @@ jobs:
   sdist:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: PyO3/maturin-action@v1
         with:
           command: sdist
           args: --out dist ${{ env.PY_MANIFEST }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: wheels-sdist
           path: dist
@@ -98,13 +98,13 @@ jobs:
       id-token: write # OIDC identity for keyless Sigstore signing
       attestations: write # write the provenance attestation
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with: { pattern: "wheels-*", merge-multiple: true, path: dist }
       # Provenance is generated BEFORE upload so the signed digests are exactly
       # the bytes that get published. Verify later with:
       #   gh attestation verify <wheel> --repo KyleClouthier/bitrep
       - name: Generate build provenance for wheels + sdist
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "dist/*"
       - uses: PyO3/maturin-action@v1
@@ -126,14 +126,14 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with: { targets: wasm32-unknown-unknown }
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
       - name: Build npm package
         run: bash bindings/wasm/build-npm.sh
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
@@ -141,7 +141,7 @@ jobs:
         working-directory: bindings/wasm/pkg
         run: npm pack
       - name: Generate build provenance for the npm tarball
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "bindings/wasm/pkg/*.tgz"
       - name: Publish (skip if this version is already on npm)
@@ -169,11 +169,11 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: Package the crate
         run: cargo package -p bitrep --allow-dirty
       - name: Generate build provenance for the .crate
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: "target/package/bitrep-*.crate"

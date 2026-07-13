@@ -23,7 +23,7 @@ jobs:
     name: criterion (regression tracking)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       # Always run the suite: this alone proves the benches still compile and
       # execute (a real regression guard against bit-rotted benchmarks).

@@ -24,7 +24,7 @@ jobs:
           - { name: x86-64 windows, os: windows-latest }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test --all-features
       - run: cargo test --no-default-features
@@ -33,7 +33,7 @@ jobs:
     name: wasm32 (wasmtime)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-wasip1
@@ -47,7 +47,7 @@ jobs:
     name: miri
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: miri
@@ -63,7 +63,7 @@ jobs:
     name: clippy + fmt + docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -77,7 +77,7 @@ jobs:
     name: msrv (1.74)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.74"
@@ -87,7 +87,7 @@ jobs:
     name: lean proofs (zero sorry, axiom audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: install elan (Lean toolchain)
         run: |
           curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
@@ -119,7 +119,7 @@ jobs:
       LANDRUN_REF: main      # comparator requires landrun built from main-branch source
       DEPS: ${{ github.workspace }}/.comparator-deps
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Guard: the Solution comparator checks must be exactly the proofs the
       # rest of the repo (and the lean-proofs job) reasons about.
@@ -146,7 +146,7 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
           # No go.sum in this repo (landrun is cloned below); the action's
@@ -161,14 +161,14 @@ jobs:
 
       - name: cache comparator build
         id: cache-comparator
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.DEPS }}/comparator
           key: comparator-${{ steps.deps.outputs.comparator-sha }}
 
       - name: cache lean4export build
         id: cache-lean4export
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.DEPS }}/lean4export
           key: lean4export-${{ steps.deps.outputs.lean4export-sha }}
@@ -205,7 +205,7 @@ jobs:
     name: cross-language conformance (Python reference)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - name: regenerate vectors from the Rust crate
         run: cargo run --example gen_vectors
@@ -218,7 +218,7 @@ jobs:
     name: kani (merge + codec harnesses)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: install kani
         run: cargo install --locked kani-verifier && cargo kani setup
       # These three are fixed-shape limb arithmetic and solve in seconds to

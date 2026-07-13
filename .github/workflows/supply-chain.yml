@@ -23,7 +23,7 @@ jobs:
     name: cargo-deny (advisories + licenses + bans + sources)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: cargo deny check
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
@@ -52,10 +52,10 @@ jobs:
       CARGO_INCREMENTAL: "0"
       SOURCE_DATE_EPOCH: "1700000000"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: build-a
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: build-b
       - uses: dtolnay/rust-toolchain@stable
@@ -81,7 +81,7 @@ jobs:
     name: coverage (llvm-cov -> Codecov)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
@@ -94,7 +94,7 @@ jobs:
         # pull pyo3/wasm-bindgen build machinery that adds nothing to coverage).
         run: cargo llvm-cov -p bitrep --all-features --lcov --output-path lcov.info
       - name: upload to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           files: lcov.info
           # Owner must enable the repo on codecov.io and (for a private repo)
