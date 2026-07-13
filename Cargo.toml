@@ -36,6 +36,9 @@ stats = ["std", "dep:num-bigint", "dep:num-traits"]
 # Receipts: canonical state hashes (SHA-256 of the canonical encoding) for
 # signing convergent aggregates. Bring your own signature scheme.
 receipts = ["std", "dep:sha2"]
+# PROBE (exploratory, ships in no default build): RelSketch, a reproducible,
+# byte-identical, mergeable relative-error quantile sketch (DDSketch-family).
+probe = ["std"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)", "cfg(kani_slow)"] }
@@ -60,6 +63,10 @@ xsum = "0.1"
 [[example]]
 name = "convergent_stats"
 required-features = ["stats"]
+
+[[example]]
+name = "quantile_receipt"
+required-features = ["probe", "receipts"]
 
 [[bench]]
 name = "reductions"

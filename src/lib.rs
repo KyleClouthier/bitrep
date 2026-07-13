@@ -126,6 +126,8 @@ mod hist;
 mod kani_proofs;
 mod lattice;
 mod merge;
+#[cfg(feature = "probe")]
+mod quantile;
 #[cfg(feature = "receipts")]
 mod receipt;
 #[cfg(feature = "std")]
@@ -143,6 +145,8 @@ pub use fast::FastSumF64;
 pub use hist::HistogramF64;
 pub use lattice::ExtremaF64;
 pub use merge::Mergeable;
+#[cfg(feature = "probe")]
+pub use quantile::RelSketch;
 #[cfg(feature = "receipts")]
 pub use receipt::state_hash;
 #[cfg(feature = "std")]
