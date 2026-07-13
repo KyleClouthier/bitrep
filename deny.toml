@@ -21,7 +21,17 @@ version = 2
 yanked = "deny"
 # Add IDs here only with a written justification and a tracking issue if a
 # transitive advisory ever needs a temporary, documented waiver.
-ignore = []
+#
+# PyO3 advisories below: bitrep-python (the Python binding) transitively depends
+# on pyo3 0.22.6, which carries these two advisories. VERIFIED bitrep does NOT
+# call either vulnerable API — no use of PyString::from_object or
+# PyCFunction::new_closure anywhere in bindings/python/src/. Neither code path is
+# reachable from bitrep. Tracked follow-up: upgrade to PyO3 0.24+ (removes both
+# and lets this ignore list return to empty).
+ignore = [
+  { id = "RUSTSEC-2025-0020", reason = "PyString::from_object buffer overflow — API unused by bitrep-python; upgrade to PyO3 0.24+ pending." },
+  { id = "RUSTSEC-2026-0177", reason = "PyCFunction::new_closure Sync bound — API unused by bitrep-python; upgrade to PyO3 0.24+ pending." },
+]
 
 [licenses]
 version = 2

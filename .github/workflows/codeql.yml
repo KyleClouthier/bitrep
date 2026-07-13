@@ -17,9 +17,7 @@ name: codeql
 
 on:
   push:
-    # TEMPORARY: scorecard-hardening is here so this workflow runs on the branch
-    # while it is being verified. REMOVE `scorecard-hardening` before merge.
-    branches: [main, scorecard-hardening]
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:

@@ -5,9 +5,7 @@ name: CI
 
 on:
   push:
-    # TEMPORARY: scorecard-hardening added to verify this workflow on the branch.
-    # REMOVE `scorecard-hardening` before merge.
-    branches: [main, scorecard-hardening]
+    branches: [main]
   pull_request:
 
 env:
