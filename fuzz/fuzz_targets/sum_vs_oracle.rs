@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Coverage-guided differential fuzzing: bitrep's exact sum vs an independent
 //! BigInt oracle, plus order/shard invariance, on fuzzer-chosen inputs.
 #![no_main]

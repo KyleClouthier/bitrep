@@ -1,4 +1,4 @@
--- Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+-- Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 /-
   bitrep — machine-checked order-invariance of exact accumulation.
 
@@ -98,7 +98,7 @@ theorem merge_comm (a b : Int) : a + b = b + a := by omega
 theorem merge_assoc (a b c : Int) : (a + b) + c = a + (b + c) := by omega
 
 end Bitrep
--- Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+-- Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 /-
   bitrep — machine-checked correctness of the rounding kernel.
 
@@ -234,7 +234,7 @@ theorem roundAt_exact (n g : Nat) (_hg : 1 ≤ g) (hex : n % 2 ^ g = 0) :
   omega
 
 end Bitrep
--- Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+-- Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 /-
   bitrep — machine-checked convergence laws for the float G-Counter.
 
@@ -408,7 +408,7 @@ theorem full_absorbs {R : Nat} (total : Fin R → Nat) (s : GC R)
   funext fun r => Nat.max_eq_left (hb r)
 
 end Bitrep
--- Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+-- Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 /-
   bitrep — merge algebra for the convergent toolkit (v0.2).
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Raw C-ABI exports for the browser demo — no wasm-bindgen, no JS glue
 //! generation, just pointers. Each `unsafe` is a straight dereference of a
 //! pointer this module handed out (or a buffer the JS side allocated via

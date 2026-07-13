@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Generates `conformance/vectors.json` — the cross-language conformance
 //! vectors described in FORMAT.md. Run: `cargo run --example gen_vectors`.
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Probe: bit-identical data-parallel training via exact gradient aggregation.
 //!
 //! In data-parallel SGD the gradient all-reduce is a float sum whose order

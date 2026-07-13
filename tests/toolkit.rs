@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Verification of the v0.3 toolkit: lattice atoms, weighted/PN moments,
 //! histograms, covariance matrices, containers, deltas, receipts.
 //! Same discipline as tests/stats.rs: independent oracles, law checks,

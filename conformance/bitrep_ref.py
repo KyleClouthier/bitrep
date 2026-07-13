@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+# Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 """Pure-Python reference implementation of the bitrep accumulator (FORMAT.md).
 
 Deliberately independent of the Rust code: Python's unbounded integers play
