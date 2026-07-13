@@ -25,11 +25,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      # Always run the suite: this alone proves the benches still compile and
+      # execute (a real regression guard against bit-rotted benchmarks).
+      # criterion's --output-format bencher emits the libtest bench lines
+      # github-action-benchmark's `cargo` parser understands.
       - name: run criterion benches (bencher output)
-        # criterion's --output-format bencher emits the libtest bench lines
-        # github-action-benchmark's `cargo` parser understands.
         run: cargo bench --bench reductions -- --output-format bencher | tee output.txt
+      # Time-series storage + regression alerting. github-action-benchmark keeps
+      # its history on a `gh-pages` branch and always switches to it, so it can
+      # only run where that branch exists: on main (store + push) and on PRs
+      # (compare + comment). It is intentionally skipped on other branch pushes
+      # so this job stays green pre-bootstrap.
+      # OWNER SETUP (one-time): create an empty `gh-pages` branch, e.g.
+      #   git switch --orphan gh-pages && git commit --allow-empty -m init && git push -u origin gh-pages
+      # Until then the tracking step is dormant; the bench run above still gates.
       - name: track / alert on regressions
+        if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: cargo
@@ -41,13 +52,5 @@ jobs:
           comment-on-alert: true
           fail-on-alert: false
           summary-always: true
-          # The persistent time series lives on a gh-pages branch, which only
-          # exists / is written on main. On branches and PRs there is nothing to
-          # fetch or store, so skip both — the job still parses the run and
-          # prints the summary (and would alert), just without touching gh-pages.
-          # OWNER SETUP: for the series + regression history to populate on main,
-          # create an empty `gh-pages` branch once (github-action-benchmark then
-          # appends to it on each push to main).
+          # Persist the series only on the default branch; PRs compare + comment.
           auto-push: ${{ github.ref == 'refs/heads/main' }}
-          save-data-file: ${{ github.ref == 'refs/heads/main' }}
-          skip-fetch-gh-pages: ${{ github.ref != 'refs/heads/main' }}
