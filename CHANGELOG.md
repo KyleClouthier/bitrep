@@ -13,8 +13,19 @@
 * Verification for the sketch: merge laws machine-checked in Lean 4
   (`proofs/RelSketchMerge.lean`, wired through the comparator — now 37 audited
   theorems); an adversarial red-team suite and a `quantile_decode` fuzz target;
-  real-data-shaped accuracy/size tests; and a second-language conformance
-  reference (`conformance/relsketch_ref.py`) reproducing the bytes byte-for-byte.
+  accuracy/size tests on both realistic synthetic latency and a **committed,
+  license-clean real dataset** (6 421 NASA-HTTP Jul 1995 response sizes,
+  `tests/data/`), validated hermetically in CI for accuracy **and** byte-identity
+  under reordering/sharding; and a second-language conformance reference
+  (`conformance/relsketch_ref.py`) reproducing the bytes byte-for-byte.
+* `RelSketch` equality is now **bitwise on every field** (`min`/`max` compared
+  via `f64::to_bits`, matching `ExtremaF64`) instead of the `derive`d IEEE-value
+  comparison. The old comparison made a decoded state carrying a `NaN` extremum
+  unequal to itself — so `from_bytes(m.to_bytes()) == Some(m)` could fail after a
+  merge even though the bytes round-tripped perfectly (found by the
+  `quantile_decode` fuzz target) — and made byte-distinct `+0.0`/`−0.0` extrema
+  compare equal. Equality now mirrors `to_bytes` exactly; byte-identity and the
+  canonical encoding are unchanged.
 
 ## 0.1.0 — 2026-07-11
 

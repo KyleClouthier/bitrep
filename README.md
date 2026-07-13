@@ -334,9 +334,11 @@ Measured on a realistic web-latency stream (lognormal body + heavy Pareto tail
 | 1%   | 0.0078 | 715  | 1 862 B | ~8 600× smaller | 0.0064 |
 | 0.1% | 0.00098 | 4 494 | 10 859 B | ~1 470× smaller | 0.0007 |
 
-And on a **real** dataset — 6 427 NYC-taxi trip durations (heavy-tailed,
-2 s–6 460 s) — every measured error stays inside the guarantee too (≤ 0.0046 at
-1%, ≤ 0.00085 at 0.1%). The state is **constant in N**: the same few kilobytes
+And on a **real** dataset — 6 421 HTTP response sizes from the NASA-HTTP July
+1995 trace (heavy-tailed, 0 B–1.27 MB; committed under
+[`tests/data/`](tests/data/) and freely redistributable, so this runs
+**hermetically in CI**) — every measured error stays inside the guarantee too
+(≤ 0.0046 at 1%, ≤ 0.00076 at 0.1%). The state is **constant in N**: the same few kilobytes
 whether you summarize a thousand requests or a trillion, and thousands of times
 smaller than the raw samples at scale. The **delta-varint** encoding
 (sorted keys stored as LEB128 gaps + varint counts) cut the state from a flat
@@ -408,7 +410,7 @@ independent method, so no single mistake can hide:
 | **Proof (bits)** | **Kani / CBMC** ([`src/kani_proofs.rs`](src/kani_proofs.rs)) | The Rust implementation's merges commute and associate and the codecs round-trip — for **all** inputs, symbolically, proven on every push (six harnesses: sum merge/codec + extrema merge laws/codec). Kani's first catch on v0.2: adversarial `ExtremaF64` decodes broke merge commutativity — the decoder now rejects non-canonical states. The add-path harnesses (add commutes, exact cancellation) decompose a symbolic f64 across all 34 limbs and are beyond CBMC's practical reach (did not close in ~3h on CI), so they're `kani_slow`-gated for local runs; those properties are proved at the model level in **Lean** and exercised by the oracle tests and the fuzzer |
 | **Differential fuzzing** | cargo-fuzz vs a BigInt oracle | 290M+ executions hunting order variance, oracle disagreement, codec breakage. Catches so far: a real `count`-overflow bug (fixed), a bug in **its own oracle** (`powi(-1067)` = 1/∞ = 0 — the crate was right), and on v0.2 a length-prefix overflow in the `CovMatrixF64` decoder, found in under a minute of fuzzing the new [`toolkit_decoders`](fuzz/fuzz_targets/toolkit_decoders.rs) target (fixed, with the crashing input kept in-tree under fuzz/artifacts as a regression record) |
 | **Independent oracle** | proptest + `BigInt` + a separately written IEEE reference rounding | Correct rounding on arbitrary finite inputs, subnormals and ±MAX included; f32 rounds once (no double-rounding) |
-| **Real datasets** | [NIST StRD NumAcc1–4](https://www.itl.nist.gov/div898/strd/univ/homepage.html); NYC-taxi trip durations; realistic web-latency | Certified means reproduced to the representational limit (LRE ≥ 14.5); RelSketch quantiles within the relative-error guarantee at p50…p9999 on heavy-tailed real and synthetic latency ([`tests/quantile_realdata.rs`](tests/quantile_realdata.rs)) |
+| **Real datasets** | [NIST StRD NumAcc1–4](https://www.itl.nist.gov/div898/strd/univ/homepage.html); [NASA-HTTP Jul 1995](https://ita.ee.lbl.gov/html/contrib/NASA-HTTP.html) response sizes (committed, hermetic); realistic web-latency | Certified means reproduced to the representational limit (LRE ≥ 14.5); RelSketch quantiles within the relative-error guarantee at p50…p9999 on heavy-tailed **real** and synthetic data, plus byte-identity under reordering/sharding on the real slice ([`tests/quantile_realdata.rs`](tests/quantile_realdata.rs)) |
 | **Cross-architecture** | golden SHA-256 vectors in CI | Identical hashes on x86-64 Linux, ARM64 macOS, x86-64 Windows and wasm32, over permutations and shardings, every commit |
 | **Cross-language** | [`FORMAT.md`](FORMAT.md) + pure-Python references ([`conformance/`](conformance/)) | A second implementation in a second language reproduces the canonical bytes and rounded values exactly, from a spec — the accumulator (`bitrep_ref.py`) and the RelSketch sketch (`relsketch_ref.py`), both proven portable |
 | **Supply chain** | cargo-deny · reproducible-build CI · signed SLSA provenance · OpenSSF Scorecard | The same thesis, applied to the build: dependencies are advisory/license/yanked-scanned on every push (`deny.toml`); the release `libbitrep.rlib` **rebuilds byte-for-byte** across independent build trees (`CARGO_INCREMENTAL=0`, `--remap-path-prefix`); published wheels, npm tarball and `.crate` carry keyless **Sigstore/SLSA provenance** on every tag; the repo's security posture is scored weekly |

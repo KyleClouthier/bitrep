@@ -85,7 +85,17 @@ use std::collections::BTreeMap;
 /// that received the same multiset — in any order, any sharding, any merge
 /// tree — return identical [`to_bytes`](Self::to_bytes) and therefore identical
 /// [`state_hash`](crate::state_hash).
-#[derive(Clone, PartialEq, Debug)]
+///
+/// Equality is **bitwise on every field**, `min`/`max` included: two sketches
+/// are equal exactly when their [`to_bytes`](Self::to_bytes) agree. This is a
+/// deliberate manual [`PartialEq`]/[`Eq`] rather than the `derive`d one, which
+/// would compare `min`/`max` by IEEE value — making `NaN` extrema unequal to
+/// themselves (a state whose bytes round-trip perfectly would fail
+/// `from_bytes(s.to_bytes()) == Some(s)`) and making `+0.0`/`−0.0` extrema, whose
+/// bytes differ, compare equal. Both break the byte-identity contract; comparing
+/// [`f64::to_bits`] restores `state-equality ⟺ byte-identity`, the same choice
+/// [`ExtremaF64`](crate::ExtremaF64) makes by storing the bits directly.
+#[derive(Clone, Debug)]
 pub struct RelSketch {
     /// Mantissa bits kept in the bucket key: `2^sub_bits` sub-buckets / octave.
     sub_bits: u8,
@@ -109,6 +119,32 @@ pub struct RelSketch {
     /// Poisoned by a `sub_bits`-mismatched merge; reads then return `None`.
     mismatched: bool,
 }
+
+/// Bitwise equality: two sketches are equal exactly when every field matches
+/// bit-for-bit, `min`/`max` compared via [`f64::to_bits`]. This makes
+/// `a == b ⟺ a.to_bytes() == b.to_bytes()` for every pair of states (`NaN`
+/// extrema self-equal, `+0.0`/`−0.0` extrema distinct), unlike a `derive`d
+/// value comparison. See the [`RelSketch`] type docs.
+impl PartialEq for RelSketch {
+    fn eq(&self, other: &Self) -> bool {
+        self.sub_bits == other.sub_bits
+            && self.collapse_shift == other.collapse_shift
+            && self.mismatched == other.mismatched
+            && self.pos == other.pos
+            && self.neg == other.neg
+            && self.zero == other.zero
+            && self.nan == other.nan
+            && self.pos_inf == other.pos_inf
+            && self.neg_inf == other.neg_inf
+            && self.min.to_bits() == other.min.to_bits()
+            && self.max.to_bits() == other.max.to_bits()
+            && self.count == other.count
+    }
+}
+
+// Bitwise comparison is a true equivalence relation (it reduces to `u64`
+// equality on every field), so `Eq` is sound — again matching `ExtremaF64`.
+impl Eq for RelSketch {}
 
 impl RelSketch {
     /// Maximum number of occupied buckets (positive + negative) before the

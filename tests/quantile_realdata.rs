@@ -13,11 +13,18 @@
 //! error must sit within the sketch's `guaranteed_alpha()` (a hair of slack for
 //! the deterministic bucket-midpoint read).
 //!
+//! A second test validates the same guarantees on a **genuine real-world**
+//! heavy-tailed dataset — 6 421 HTTP response sizes from the NASA-HTTP July 1995
+//! trace (Internet Traffic Archive, freely redistributable) — committed under
+//! [`tests/data/`](data/) and embedded with `include_str!`, so it runs
+//! hermetically in CI with no network. See [`tests/data/README.md`](data/README.md)
+//! for provenance, license, and the exact (reproducible) extraction.
+//!
 //! Run: `cargo test --release --features quantile --test quantile_realdata -- --nocapture`
 
 #![cfg(feature = "quantile")]
 
-use bitrep::RelSketch;
+use bitrep::{Mergeable, RelSketch};
 
 // deterministic xorshift64* — reproducible, no external dependency
 struct Rng(u64);
@@ -128,5 +135,121 @@ fn realistic_latency_accuracy_and_size_within_guarantee() {
             0,
             "realistic data must not collapse"
         );
+    }
+}
+
+/// The committed NASA-HTTP slice, embedded at compile time so the test is
+/// hermetic (no filesystem/network at run time). See `tests/data/README.md`.
+const NASA_HTTP_SIZES: &str = include_str!("data/nasa_http_jul95_sizes.csv");
+
+fn nasa_http_sizes() -> Vec<f64> {
+    NASA_HTTP_SIZES
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| {
+            l.trim()
+                .parse::<u64>()
+                .expect("dataset is one integer per line") as f64
+        })
+        .collect()
+}
+
+/// Real, heavy-tailed data (not synthetic): the accuracy guarantee holds AND
+/// the state is byte-identical under reordering, sharding and merge order.
+/// This is the CI-reproducible closure of the previously local-only real-data
+/// run — the dataset ships in the repo (`tests/data/`, license-clean) and is
+/// embedded with `include_str!`, so it validates on genuine data in CI.
+#[test]
+fn real_nasa_http_accuracy_and_byte_identity() {
+    let data = nasa_http_sizes();
+    assert_eq!(data.len(), 6421, "the committed slice must be intact");
+
+    let mut sorted = data.clone();
+    sorted.sort_by(f64::total_cmp);
+    let n_zeros = sorted.iter().take_while(|&&x| x == 0.0).count();
+
+    println!(
+        "\n[real-data] NASA-HTTP Jul 1995 response sizes, N = {} (min {} B, max {} B, {} zero-byte)",
+        data.len(),
+        sorted[0],
+        sorted[sorted.len() - 1],
+        n_zeros
+    );
+
+    let qs = [0.5, 0.9, 0.95, 0.99, 0.999];
+    for &alpha in &[0.01, 0.001] {
+        let mut sketch = RelSketch::new(alpha).unwrap();
+        for &x in &data {
+            sketch.add(x);
+        }
+        let guar = sketch.guaranteed_alpha();
+
+        // Accuracy: every measured error is within the relative-error guarantee.
+        let mut worst = 0.0f64;
+        for &q in &qs {
+            let exact = exact_quantile(&sorted, q);
+            if exact == 0.0 {
+                continue; // relative error undefined at an exact zero
+            }
+            let est = sketch.quantile(q).unwrap();
+            let rel = (est - exact).abs() / exact.abs();
+            worst = worst.max(rel);
+            assert!(
+                rel <= guar * 1.001,
+                "alpha {alpha}: p{} rel err {rel} exceeds guarantee {guar}",
+                (q * 100.0)
+            );
+        }
+        println!(
+            "  alpha {alpha:>6}: guarantee {guar:.5}, {} buckets, {} bytes, worst rel-err {worst:.5}",
+            sketch.bucket_count(),
+            sketch.to_bytes().len(),
+        );
+
+        // Real data must not collapse resolution, and it must round-trip.
+        assert_eq!(
+            sketch.collapse_shift(),
+            0,
+            "real HTTP sizes must not collapse"
+        );
+        let bytes = sketch.to_bytes();
+        assert_eq!(RelSketch::from_bytes(&bytes).unwrap(), sketch);
+
+        // BYTE-IDENTITY on real data under reordering and a scrambled merge
+        // tree — the crate's core promise, validated on a genuine multiset.
+        let mut rng = Rng::new(0x4EA1_DA7A ^ alpha.to_bits());
+        for _ in 0..8 {
+            let mut d = data.clone();
+            for i in (1..d.len()).rev() {
+                let j = (rng.next_u64() % (i as u64 + 1)) as usize;
+                d.swap(i, j);
+            }
+            let mut s = RelSketch::new(alpha).unwrap();
+            for &x in &d {
+                s.add(x);
+            }
+            assert_eq!(
+                s.to_bytes(),
+                bytes,
+                "reordering real data changed the bytes"
+            );
+
+            // shard round-robin, merge in reverse order
+            let k = 7usize;
+            let mut shards: Vec<RelSketch> =
+                (0..k).map(|_| RelSketch::new(alpha).unwrap()).collect();
+            for (i, &x) in d.iter().enumerate() {
+                shards[i % k].add(x);
+            }
+            let mut merged = RelSketch::new(alpha).unwrap();
+            for s in shards.iter().rev() {
+                merged.merge(s);
+            }
+            assert_eq!(
+                merged.to_bytes(),
+                bytes,
+                "sharding real data changed the bytes"
+            );
+        }
     }
 }

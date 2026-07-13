@@ -461,3 +461,135 @@ proptest! {
         }
     }
 }
+
+// ---------------------------------------------------------------------------
+// 7. CANONICAL IDEMPOTENCE — merging decoded states re-encodes to itself, and
+//    state-equality is byte-identity (bitwise on min/max), NOT IEEE value.
+//
+// Regression for a libFuzzer crash (target `quantile_decode`, ~8k execs): a
+// decoded state carrying a `NaN` in `min` round-trips its BYTES perfectly, but
+// the old `#[derive(PartialEq)]` compared `min`/`max` by IEEE value, so
+// `NaN != NaN` made the state unequal to itself and
+// `from_bytes(m.to_bytes()) == Some(m)` failed after a self-merge. The fix is a
+// bitwise `PartialEq`/`Eq` (min/max via `to_bits`), so state-equality exactly
+// mirrors `to_bytes` — the same choice `ExtremaF64` makes.
+// ---------------------------------------------------------------------------
+
+/// The exact fuzzer-minimized crash input. It decodes to a bucketless state
+/// with a `NaN` `min`; its bytes round-trip, and after a self-merge the decoded
+/// state must equal the merged state (the assertion the fuzz target makes).
+const CRASH_NAN_MIN: &[u8] = &[
+    0xa, 0x0, 0x0, 0xf9, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+    0x0, 0x0, 0x0, 0x40, 0x0, 0x2f, 0x0, 0x0, 0xd6, 0xab, 0xd6, 0xd6, 0xd6, 0xd6, 0xd6, 0xd6, 0xd6,
+    0xd6, 0xd6, 0xd6, 0xbf, 0xff, 0xff, 0xff, 0xd6, 0xd6, 0xd6, 0xd6, 0xd6, 0xd6, 0xd6, 0xd6, 0xd6,
+    0x0, 0x0, 0x0, 0x0, 0x0, 0xff, 0x0, 0x0, 0x0,
+];
+
+#[test]
+fn regression_fuzz_crash_nan_min_roundtrips_after_merge() {
+    let state = RelSketch::from_bytes(CRASH_NAN_MIN).expect("the minimized crash input decodes");
+    // Byte-identity of the decoded state itself (fuzz target invariant #1).
+    assert_eq!(
+        state.to_bytes(),
+        CRASH_NAN_MIN,
+        "decoded state must be byte-canonical"
+    );
+    assert_eq!(
+        state.bucket_count(),
+        0,
+        "this crash is the all-special, zero-bucket shape"
+    );
+    assert!(
+        state.min().unwrap().is_nan(),
+        "the crash hinges on a NaN min extremum"
+    );
+
+    // Reads never panic on the decoded state.
+    for &q in &[0.0, 0.5, 0.99, 1.0] {
+        let _ = state.quantile(q);
+    }
+    let _ = (
+        state.min(),
+        state.max(),
+        state.count(),
+        state.guaranteed_alpha(),
+    );
+
+    // Self-merge, then the exact assertion the fuzz target `quantile_decode`
+    // makes on line ~34 — a decoded-then-merged state is itself canonical.
+    let mut m = state.clone();
+    m.merge(&state);
+    assert_eq!(
+        RelSketch::from_bytes(&m.to_bytes()),
+        Some(m.clone()),
+        "merged state must round-trip to an EQUAL state (bitwise, NaN included)"
+    );
+    // A merged state is bitwise-equal to itself (the derived value-PartialEq
+    // this replaced would return false here because of the NaN min).
+    assert_eq!(
+        m,
+        m.clone(),
+        "a state with a NaN extremum must equal itself"
+    );
+}
+
+#[test]
+fn real_all_special_sketch_roundtrips_and_self_merges() {
+    // A LEGITIMATE all-special sketch, built only through the public `.add`
+    // API with zeros / signed zeros / NaN / ±∞ — no buckets ever occupied.
+    // This must round-trip and self-merge canonically (the fix must not reject
+    // real all-special states, only stop miscomparing them).
+    let mut s = RelSketch::new(0.01).unwrap();
+    for _ in 0..5 {
+        s.add(0.0);
+        s.add(-0.0);
+        s.add(f64::NAN);
+        s.add(f64::INFINITY);
+        s.add(f64::NEG_INFINITY);
+    }
+    assert_eq!(s.bucket_count(), 0, "only specials were added");
+    assert_eq!(s.nan_count(), 5);
+    // Extrema of a real all-special sketch are never NaN.
+    assert!(!s.min().unwrap().is_nan() && !s.max().unwrap().is_nan());
+
+    // Byte round-trip to an EQUAL state.
+    let back = RelSketch::from_bytes(&s.to_bytes()).unwrap();
+    assert_eq!(back, s);
+    assert_eq!(back.to_bytes(), s.to_bytes());
+
+    // Self-merge is canonical and idempotent under encode/decode.
+    let mut m = s.clone();
+    m.merge(&s);
+    assert_eq!(RelSketch::from_bytes(&m.to_bytes()), Some(m.clone()));
+    assert_eq!(m.count(), s.count().saturating_mul(2));
+    assert_eq!(m.nan_count(), 10);
+}
+
+#[test]
+fn equality_is_bitwise_not_ieee_value() {
+    // Build two one-sample sketches whose ONLY difference is the sign of a zero
+    // extremum: +0.0 vs -0.0. Their bytes differ (−0.0 has the sign bit set),
+    // so — under the byte-identity contract — they must compare UNEQUAL. A
+    // derived value-PartialEq would wrongly call them equal (+0.0 == -0.0).
+    let mut pos_zero = RelSketch::new(0.01).unwrap();
+    pos_zero.add(0.0);
+    let mut neg_zero = RelSketch::new(0.01).unwrap();
+    neg_zero.add(-0.0);
+    assert_ne!(
+        pos_zero.to_bytes(),
+        neg_zero.to_bytes(),
+        "±0.0 extrema must produce different bytes"
+    );
+    assert_ne!(
+        pos_zero, neg_zero,
+        "state-equality must track byte-identity, not IEEE value"
+    );
+
+    // And conversely: equal bytes ⟺ equal states, NaN extrema included.
+    let nan_state = RelSketch::from_bytes(CRASH_NAN_MIN).unwrap();
+    assert_eq!(nan_state, nan_state.clone());
+    assert_eq!(
+        RelSketch::from_bytes(&nan_state.to_bytes()),
+        Some(nan_state)
+    );
+}

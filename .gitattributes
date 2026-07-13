@@ -2,3 +2,7 @@
 *.sh text eol=lf
 *.py text eol=lf
 *.lean text eol=lf
+
+# Real-data test fixture: pin exact bytes on every platform so the documented
+# sha256 and the byte-identity test stay stable (never CRLF-normalized).
+tests/data/nasa_http_jul95_sizes.csv -text
