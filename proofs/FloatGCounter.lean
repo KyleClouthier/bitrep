@@ -41,18 +41,9 @@ namespace Bitrep
 /-! ### Entries and the count-wins join -/
 
 /-- Replica-entry join: count-wins. On an append-only history, the larger
-    count strictly contains the smaller, so max loses nothing. -/
+    count strictly contains the smaller, so max loses nothing. Definitionally
+    `Nat.max`, so the CRDT laws below defer to the core lemmas directly. -/
 def ejoin (a b : Nat) : Nat := Nat.max a b
-
-theorem ejoin_comm (a b : Nat) : ejoin a b = ejoin b a :=
-  Nat.max_comm a b
-
-theorem ejoin_assoc (a b c : Nat) :
-    ejoin (ejoin a b) c = ejoin a (ejoin b c) :=
-  Nat.max_assoc a b c
-
-theorem ejoin_idem (a : Nat) : ejoin a a = a :=
-  Nat.max_self a
 
 /-! ### Counter states over R replicas -/
 
@@ -66,14 +57,14 @@ def join {R : Nat} (s t : GC R) : GC R := fun r => ejoin (s r) (t r)
 def bot {R : Nat} : GC R := fun _ => 0
 
 theorem join_comm {R : Nat} (s t : GC R) : join s t = join t s :=
-  funext fun r => ejoin_comm (s r) (t r)
+  funext fun r => Nat.max_comm (s r) (t r)
 
 theorem join_assoc {R : Nat} (s t u : GC R) :
     join (join s t) u = join s (join t u) :=
-  funext fun r => ejoin_assoc (s r) (t r) (u r)
+  funext fun r => Nat.max_assoc (s r) (t r) (u r)
 
 theorem join_idem {R : Nat} (s : GC R) : join s s = s :=
-  funext fun r => ejoin_idem (s r)
+  funext fun r => Nat.max_self (s r)
 
 theorem join_bot {R : Nat} (s : GC R) : join bot s = s :=
   funext fun r => Nat.zero_max (s r)
