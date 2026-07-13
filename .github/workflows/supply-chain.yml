@@ -1,0 +1,104 @@
+# Supply-chain + build-integrity layer for bitrep.
+#
+# Extends the project's thesis — verifiable, reproducible, trustworthy compute —
+# down to the build and its dependencies:
+#   * cargo-deny            — advisory / license / yanked / source scanning
+#   * reproducible build    — the release rlib rebuilds byte-for-byte
+#   * coverage              — cargo-llvm-cov -> Codecov
+#
+# Additive to ci.yml (test/miri/kani/lean/comparator/conformance/lint); nothing
+# here gates or replaces those jobs.
+name: supply-chain
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  cargo-deny:
+    name: cargo-deny (advisories + licenses + bans + sources)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: cargo deny check
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          # deny.toml at the repo root is the source of truth for the policy.
+          arguments: --all-features
+
+  reproducible-build:
+    name: reproducible build (byte-identical rebuild)
+    runs-on: ubuntu-latest
+    # The thesis, applied to bitrep's own build: the release artifact must be a
+    # deterministic function of the source. We build the core crate's release
+    # rlib twice, in two independent working trees, and assert one SHA-256.
+    #
+    # Scope + method (honest): we hash target/release/libbitrep.rlib for the
+    # `bitrep` crate built with --all-features. Determinism is achieved with
+    #   CARGO_INCREMENTAL=0   (no incremental-compilation nondeterminism)
+    #   SOURCE_DATE_EPOCH     (pin any timestamp-derived bytes)
+    #   --remap-path-prefix   (strip the absolute build path, which otherwise
+    #                          leaks into panic locations / file!() strings)
+    # Both builds run on the same runner image and toolchain: this proves the
+    # build is a pure function of (source, toolchain, flags), independent of the
+    # filesystem path it is built at. It is not a claim about cross-toolchain or
+    # cross-runner-image reproducibility (rustc pins that separately).
+    env:
+      CARGO_INCREMENTAL: "0"
+      SOURCE_DATE_EPOCH: "1700000000"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: build-a
+      - uses: actions/checkout@v4
+        with:
+          path: build-b
+      - uses: dtolnay/rust-toolchain@stable
+      - name: build A
+        working-directory: build-a
+        run: RUSTFLAGS="--remap-path-prefix=$PWD=/bitrep" cargo build --release --all-features -p bitrep
+      - name: build B
+        working-directory: build-b
+        run: RUSTFLAGS="--remap-path-prefix=$PWD=/bitrep" cargo build --release --all-features -p bitrep
+      - name: assert byte-identical rlib
+        run: |
+          A=$(sha256sum build-a/target/release/libbitrep.rlib | cut -d' ' -f1)
+          B=$(sha256sum build-b/target/release/libbitrep.rlib | cut -d' ' -f1)
+          echo "build A: $A"
+          echo "build B: $B"
+          if [ "$A" != "$B" ]; then
+            echo "::error::release rlib is NOT byte-identical across rebuilds ($A != $B)"
+            exit 1
+          fi
+          echo "OK: libbitrep.rlib reproduces byte-for-byte — sha256 $A"
+
+  coverage:
+    name: coverage (llvm-cov -> Codecov)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+      - name: generate lcov coverage
+        # Scoped to the core crate: all logic and the whole test suite live here;
+        # the wasm/python members are thin FFI wrappers with no unit tests (and
+        # pull pyo3/wasm-bindgen build machinery that adds nothing to coverage).
+        run: cargo llvm-cov -p bitrep --all-features --lcov --output-path lcov.info
+      - name: upload to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          # Owner must enable the repo on codecov.io and (for a private repo)
+          # add CODECOV_TOKEN; until then the upload is best-effort and must not
+          # fail CI or block the branch.
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}

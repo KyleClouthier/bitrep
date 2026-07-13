@@ -8,6 +8,9 @@ byte-identical regardless of summation order, thread count, shard split,
 batch size, SIMD width, or CPU architecture.
 
 [![CI](https://github.com/KyleClouthier/bitrep/actions/workflows/ci.yml/badge.svg)](https://github.com/KyleClouthier/bitrep/actions/workflows/ci.yml)
+[![supply-chain](https://github.com/KyleClouthier/bitrep/actions/workflows/supply-chain.yml/badge.svg)](https://github.com/KyleClouthier/bitrep/actions/workflows/supply-chain.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/KyleClouthier/bitrep/badge)](https://securityscorecards.dev/viewer/?uri=github.com/KyleClouthier/bitrep)
+[![codecov](https://codecov.io/gh/KyleClouthier/bitrep/branch/main/graph/badge.svg)](https://codecov.io/gh/KyleClouthier/bitrep)
 *The badge is the claim: CI computes golden test vectors on x86-64 Linux,
 ARM64 macOS, x86-64 Windows and wasm32, and asserts one SHA-256 across all of
 them, over multiple permutations and shardings, on every commit.*
@@ -333,6 +336,7 @@ independent method, so no single mistake can hide:
 | **Real datasets** | [NIST StRD NumAcc1–4](https://www.itl.nist.gov/div898/strd/univ/homepage.html) | Certified means reproduced to the representational limit (LRE ≥ 14.5) |
 | **Cross-architecture** | golden SHA-256 vectors in CI | Identical hashes on x86-64 Linux, ARM64 macOS, x86-64 Windows and wasm32, over permutations and shardings, every commit |
 | **Cross-language** | [`FORMAT.md`](FORMAT.md) + pure-Python reference ([`conformance/`](conformance/)) | A second implementation in a second language reproduces the canonical bytes and rounded values exactly, from a spec — the format, proven portable |
+| **Supply chain** | cargo-deny · reproducible-build CI · signed SLSA provenance · OpenSSF Scorecard | The same thesis, applied to the build: dependencies are advisory/license/yanked-scanned on every push (`deny.toml`); the release `libbitrep.rlib` **rebuilds byte-for-byte** across independent build trees (`CARGO_INCREMENTAL=0`, `--remap-path-prefix`); published wheels, npm tarball and `.crate` carry keyless **Sigstore/SLSA provenance** on every tag; the repo's security posture is scored weekly |
 | **Hygiene** | Miri, clippy `-D warnings`, rustfmt, MSRV 1.74, `forbid(unsafe_code)`, zero runtime deps | The boring foundations |
 
 The honest division of labor: Lean proves the *algorithm's mathematics*,

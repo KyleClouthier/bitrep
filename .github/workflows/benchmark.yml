@@ -1,0 +1,56 @@
+# Benchmark regression tracking.
+#
+# benches/reductions.rs is a criterion suite (bitrep vs naive/Kahan/xsum). This
+# job runs it, emits the libtest "bencher" format criterion can produce, and
+# feeds it to github-action-benchmark, which keeps a time series (pushed to the
+# gh-pages branch on main) and alerts on regressions. Non-blocking to start:
+# fail-on-alert is false, so a slow runner never reds the build — it comments.
+name: benchmark
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write # github-action-benchmark stores the series on gh-pages (main only)
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bench:
+    name: criterion (regression tracking)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      # Always run the suite: this alone proves the benches still compile and
+      # execute (a real regression guard against bit-rotted benchmarks).
+      # criterion's --output-format bencher emits the libtest bench lines
+      # github-action-benchmark's `cargo` parser understands.
+      - name: run criterion benches (bencher output)
+        run: cargo bench --bench reductions -- --output-format bencher | tee output.txt
+      # Time-series storage + regression alerting. github-action-benchmark keeps
+      # its history on a `gh-pages` branch and always switches to it, so it can
+      # only run where that branch exists: on main (store + push) and on PRs
+      # (compare + comment). It is intentionally skipped on other branch pushes
+      # so this job stays green pre-bootstrap.
+      # OWNER SETUP (one-time): create an empty `gh-pages` branch, e.g.
+      #   git switch --orphan gh-pages && git commit --allow-empty -m init && git push -u origin gh-pages
+      # Until then the tracking step is dormant; the bench run above still gates.
+      - name: track / alert on regressions
+        if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: cargo
+          output-file-path: output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Comment on the commit/PR when a result regresses past the threshold,
+          # but do not fail the build (start observability-only, tighten later).
+          alert-threshold: "200%"
+          comment-on-alert: true
+          fail-on-alert: false
+          summary-always: true
+          # Persist the series only on the default branch; PRs compare + comment.
+          auto-push: ${{ github.ref == 'refs/heads/main' }}

@@ -1,0 +1,60 @@
+# cargo-deny: supply-chain gate for the bitrep workspace.
+#   advisories -> RustSec CVE / unmaintained / yanked scan (security)
+#   licenses   -> permissive, redistribution-safe licenses only (bitrep ships
+#                 MIT OR Apache-2.0; every dependency must be compatible with that)
+#   bans       -> catch duplicate versions and anything explicitly disallowed
+#   sources    -> crates.io only; no unvetted git or alternate-registry pulls
+#
+# Run locally: cargo deny check
+#   (or scope it: cargo deny check advisories | licenses | bans | sources)
+#
+# Scope note: this vets the root crate + the wasm/python binding workspace
+# members and their full (incl. dev-) dependency trees. fuzz/ and demo/ are
+# standalone crates excluded from the workspace, so their extra tooling deps
+# are not gated here.
+
+[advisories]
+version = 2
+# RustSec advisory DB: known vulnerabilities and unmaintained crates fail the
+# check (the v2 default). Yanked crates are a hard stop — a reproducibility
+# project must not depend on a pulled release.
+yanked = "deny"
+# Add IDs here only with a written justification and a tracking issue if a
+# transitive advisory ever needs a temporary, documented waiver.
+ignore = []
+
+[licenses]
+version = 2
+# Permissive, redistribution-safe licenses only. Every crate in the tree today
+# is MIT / Apache-2.0 / BSD / ISC / Unicode-3.0 / Zlib / MPL-2.0(file-level).
+# A copyleft (GPL/AGPL/LGPL) or unknown license landing here is a hard stop —
+# exactly the supply-chain surprise this gate exists to catch.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.9
+# The allow-list above is deliberately broader than what the current tree uses
+# (only MIT / Apache-2.0 today) so a routine dependency bump into another
+# permissive license doesn't fail the build; don't warn about the unused ones.
+unused-allowed-license = "allow"
+
+[bans]
+# Duplicate versions of the same crate bloat the tree and muddy provenance;
+# surface them as warnings (they are common via dev-deps and not worth failing
+# the build over). Wildcard version requirements are a reproducibility hazard.
+multiple-versions = "warn"
+wildcards = "warn"
+# Explicitly banned crates (known-bad or license-incompatible) would go here.
+deny = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

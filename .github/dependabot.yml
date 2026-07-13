@@ -1,0 +1,35 @@
+# Dependabot — weekly dependency update PRs for the Cargo trees and the GitHub
+# Actions used across the workflows. Grouped so a routine bump is one reviewable
+# PR, not a swarm. cargo-deny (deny.toml) gates whatever these PRs propose.
+version: 2
+updates:
+  # Root crate + workspace members (bindings/wasm, bindings/python) share the
+  # root Cargo.lock, so one cargo entry at the root covers the whole workspace.
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      cargo-deps:
+        patterns: ["*"]
+
+  # The fuzz crate is a standalone crate (excluded from the workspace) with its
+  # own Cargo.lock, so it needs its own entry.
+  - package-ecosystem: cargo
+    directory: "/fuzz"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      fuzz-deps:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      actions:
+        patterns: ["*"]
