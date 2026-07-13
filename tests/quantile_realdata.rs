@@ -72,7 +72,10 @@ fn realistic_latency_accuracy_and_size_within_guarantee() {
     let qs = [0.5, 0.9, 0.95, 0.99, 0.999, 0.9999];
     let raw_bytes = data.len() * 8;
 
-    println!("\n[real-data] realistic web-latency, N = {N} ({} MB raw f64)", raw_bytes >> 20);
+    println!(
+        "\n[real-data] realistic web-latency, N = {N} ({} MB raw f64)",
+        raw_bytes >> 20
+    );
     println!(
         "  {:>6} | {:>9} | {:>10} {:>10} {:>9}",
         "alpha", "guarantee", "buckets", "bytes", "vs raw"
@@ -114,9 +117,16 @@ fn realistic_latency_accuracy_and_size_within_guarantee() {
         println!("  (worst {worst:.5})");
         // Size is constant in N and tiny: assert the sketch is far smaller than
         // the raw data (the compression claim, measured not asserted on faith).
-        assert!(bytes < raw_bytes / 100, "sketch should be >100x smaller than raw");
+        assert!(
+            bytes < raw_bytes / 100,
+            "sketch should be >100x smaller than raw"
+        );
         // No collapse should trigger on realistic data: the guarantee is the
         // clean 2^-(sub_bits+1), not a coarsened one.
-        assert_eq!(sketch.collapse_shift(), 0, "realistic data must not collapse");
+        assert_eq!(
+            sketch.collapse_shift(),
+            0,
+            "realistic data must not collapse"
+        );
     }
 }

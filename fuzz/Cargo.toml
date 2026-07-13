@@ -11,7 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 num-bigint = "0.4"
 num-traits = "0.2"
-bitrep = { path = "..", features = ["stats"] }
+bitrep = { path = "..", features = ["stats", "quantile"] }
 
 [[bin]]
 name = "sum_vs_oracle"
@@ -30,6 +30,13 @@ bench = false
 [[bin]]
 name = "toolkit_decoders"
 path = "fuzz_targets/toolkit_decoders.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "quantile_decode"
+path = "fuzz_targets/quantile_decode.rs"
 test = false
 doc = false
 bench = false
