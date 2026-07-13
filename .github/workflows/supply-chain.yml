@@ -12,7 +12,7 @@ name: supply-chain
 
 on:
   push:
-    branches: [main, ci-supplychain] # TEMPORARY: remove ci-supplychain before merge
+    branches: [main]
   pull_request:
 
 env:
