@@ -53,6 +53,14 @@ addition is associative and commutative, so the state is order-invariant *by
 construction* — not by kernel discipline. One correct rounding happens at the
 end (nearest, ties-to-even).
 
+*Named limit — capacity:* the 78 bits of headroom above the `f64` range hold at
+least **2⁶³ additions** of the largest finite `f64` (and far more for typical
+magnitudes) before the fixed-point integer could overflow — a bound that is
+unreachable in practice (centuries at a billion adds/sec) and applies across
+merges, since merging sums the limbs. The value count is a separate `u64` used
+only for `mean`/variance denominators; it saturates rather than wraps and never
+affects the exact sum.
+
 ## The distributed contract
 
 Accumulators **merge** and **serialize**. Sum shards on different machines,
