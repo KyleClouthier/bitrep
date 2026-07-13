@@ -30,7 +30,9 @@ jobs:
       - uses: actions/checkout@v4
       # libFuzzer / cargo-fuzz needs a nightly toolchain for the sanitizer flags.
       - uses: dtolnay/rust-toolchain@nightly
-      - uses: taiki-e/install-action@cargo-fuzz
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-fuzz
       - name: fuzz ${{ matrix.target }} (bounded)
         run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=300 -rss_limit_mb=4096
       - name: upload crash artifacts

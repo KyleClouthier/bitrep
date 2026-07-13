@@ -85,7 +85,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
-      - uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
       - name: generate lcov coverage
         # Scoped to the core crate: all logic and the whole test suite live here;
         # the wasm/python members are thin FFI wrappers with no unit tests (and
