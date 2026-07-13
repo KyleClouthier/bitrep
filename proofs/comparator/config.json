@@ -35,7 +35,10 @@
         "Bitrep.or_join_assoc",
         "Bitrep.or_join_idem",
         "Bitrep.satAdd_comm",
-        "Bitrep.satAdd_assoc"
+        "Bitrep.satAdd_assoc",
+        "Bitrep.relsketch_merge_comm",
+        "Bitrep.relsketch_merge_assoc",
+        "Bitrep.relsketch_merge_empty"
     ],
     "permitted_axioms": ["propext", "Quot.sound", "Classical.choice"],
     "enable_nanoda": false

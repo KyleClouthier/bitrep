@@ -131,6 +131,7 @@ jobs:
         run: |
           cat proofs/OrderInvariance.lean proofs/RoundNearestEven.lean \
               proofs/FloatGCounter.lean proofs/ToolkitAlgebra.lean \
+              proofs/RelSketchMerge.lean \
             | diff -u - proofs/comparator/Solution.lean
 
       # Guard: the comparator must cover exactly the theorems check.sh audits

@@ -5,11 +5,12 @@
   This file is the human-auditable list of what the Lean proofs claim:
   every definition the theorem statements depend on (copied VERBATIM from
   proofs/OrderInvariance.lean, proofs/RoundNearestEven.lean,
-  proofs/FloatGCounter.lean and proofs/ToolkitAlgebra.lean), plus each of
-  the 34 audited theorems restated verbatim with a `sorry` proof.
+  proofs/FloatGCounter.lean, proofs/ToolkitAlgebra.lean and
+  proofs/RelSketchMerge.lean), plus each of the 37 audited theorems restated
+  verbatim with a `sorry` proof.
 
   The comparator (github.com/leanprover/comparator) then guarantees that
-  Solution.lean — the concatenation of the four real proof files — proves
+  Solution.lean — the concatenation of the five real proof files — proves
   EXACTLY these statements, using only the axioms propext / Quot.sound /
   Classical.choice, and that the proofs replay in the Lean kernel.
 
@@ -232,5 +233,25 @@ theorem satAdd_comm (c : Nat) : ∀ a b, satAdd c a b = satAdd c b a := sorry
 
 theorem satAdd_assoc (c : Nat) :
     ∀ a b d, satAdd c (satAdd c a b) d = satAdd c a (satAdd c b d) := sorry
+
+/-! ## RelSketch quantile-sketch merge laws (RelSketchMerge.lean) -/
+
+/-- A bucket store: the integer count held at each key (absent keys hold 0). -/
+def Buckets (κ : Type) := κ → Nat
+
+/-- The RelSketch bucket merge: sum counts per key. -/
+def bmerge {κ : Type} (m n : Buckets κ) : Buckets κ := fun k => m k + n k
+
+/-- The empty store (no bucket occupied). -/
+def bempty {κ : Type} : Buckets κ := fun _ => 0
+
+theorem relsketch_merge_comm {κ : Type} (m n : Buckets κ) :
+    bmerge m n = bmerge n m := sorry
+
+theorem relsketch_merge_assoc {κ : Type} (m n p : Buckets κ) :
+    bmerge (bmerge m n) p = bmerge m (bmerge n p) := sorry
+
+theorem relsketch_merge_empty {κ : Type} (m : Buckets κ) :
+    bmerge bempty m = m := sorry
 
 end Bitrep
