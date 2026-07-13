@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Probe: authenticated float aggregates — a Merkle tree over exact sums.
 //!
 //! Float sums never had authenticated data structures because a float sum

@@ -15,6 +15,11 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Least privilege: the fuzz job only reads the repo. Crash artifacts are stored
+# via actions/upload-artifact, which uses the artifact service (no extra scope).
+permissions:
+  contents: read
+
 jobs:
   fuzz:
     name: fuzz ${{ matrix.target }}
@@ -25,22 +30,22 @@ jobs:
         # Keep in sync with fuzz/fuzz_targets/ (fuzz/Cargo.toml [[bin]] entries).
         target: [sum_vs_oracle, codec_robustness, toolkit_decoders]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       # libFuzzer / cargo-fuzz needs a nightly toolchain for the sanitizer flags.
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@efcb852328a9f50117170cc43094fb6f09eaf1ae # nightly branch (tracks current nightly)
         with:
           # cargo-fuzz defaults to the musl target on Linux, whose static libc
           # is incompatible with the address sanitizer (and its std isn't
           # installed here). Build for the gnu host target instead.
           targets: x86_64-unknown-linux-gnu
-      - uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@acd25891978b4cdaebd139d3efef606d26513b14 # v2.47.0
         with:
           tool: cargo-fuzz
       - name: fuzz ${{ matrix.target }} (bounded)
         run: cargo fuzz run --target x86_64-unknown-linux-gnu ${{ matrix.target }} -- -max_total_time=300 -rss_limit_mb=4096
       - name: upload crash artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         with:
           name: fuzz-crash-${{ matrix.target }}
           path: fuzz/artifacts/${{ matrix.target }}/

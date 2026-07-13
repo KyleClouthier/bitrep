@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Lattice atoms: exact, order-invariant min/max.
 //!
 //! Min and max are join-semilattice operations already — exact, idempotent,

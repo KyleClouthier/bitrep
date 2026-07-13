@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Convergent statistics as a lawful CRDT: replicated mean/variance/regression
 //! that converge to the same bits on every replica, in any merge order.
 //!

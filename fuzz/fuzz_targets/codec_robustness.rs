@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Fuzz the byte codec: arbitrary bytes either decode to a state that
 //! re-encodes to the same bytes, or are rejected — never panic, never mangle.
 #![no_main]

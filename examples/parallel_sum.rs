@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Parallel exact summation: linear thread scaling with ZERO determinism
 //! caveats. Naive parallel sums change bits with thread count; bitrep's
 //! order-invariance means any thread count, any chunking, any merge order —

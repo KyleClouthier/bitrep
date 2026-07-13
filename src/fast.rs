@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! High-throughput streaming front-end producing canonical [`SumF64`] state.
 //!
 //! [`FastSumF64`] is Neal's small-accumulator technique (arXiv:1505.05571,

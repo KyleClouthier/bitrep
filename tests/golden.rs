@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! The cross-architecture golden vector.
 //!
 //! CI runs this exact test on x86-64 Linux, ARM64 macOS, x86-64 Windows and

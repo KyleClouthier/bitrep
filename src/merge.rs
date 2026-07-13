@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! The [`Mergeable`] trait: the one abstraction every bitrep state shares.
 //!
 //! Everything in this crate is a *mergeable state*: adding is local, merging

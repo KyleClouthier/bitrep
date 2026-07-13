@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Honest benchmarks: bitrep vs the things you'd use instead.
 //!
 //! Run: `cargo bench`. Numbers vary by hardware; the point is the *multiple*,

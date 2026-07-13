@@ -12,8 +12,10 @@ on:
     branches: [main]
   pull_request:
 
+# Least privilege: default read-only; only the bench job widens to contents:write,
+# and only it needs it (github-action-benchmark pushes the series to gh-pages on main).
 permissions:
-  contents: write # github-action-benchmark stores the series on gh-pages (main only)
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -22,9 +24,11 @@ jobs:
   bench:
     name: criterion (regression tracking)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # github-action-benchmark stores the series on gh-pages (main only)
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable branch (tracks current stable)
       # Always run the suite: this alone proves the benches still compile and
       # execute (a real regression guard against bit-rotted benchmarks).
       # criterion's --output-format bencher emits the libtest bench lines
@@ -41,7 +45,7 @@ jobs:
       # Until then the tracking step is dormant; the bench run above still gates.
       - name: track / alert on regressions
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 # v1.20.4
         with:
           tool: cargo
           output-file-path: output.txt

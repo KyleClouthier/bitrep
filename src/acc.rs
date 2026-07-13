@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! The superaccumulator: a fixed-point two's-complement integer wide enough to
 //! hold any finite `f64` exactly, in units of 2^-1074.
 //!

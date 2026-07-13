@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Fuzz the v0.2 toolkit decoders — the variable-length parsers
 //! (HistogramF64, CovMatrixF64) and the fixed-size stats codecs. Arbitrary
 //! bytes either decode to a state that re-encodes identically, or are

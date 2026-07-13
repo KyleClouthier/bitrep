@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Kyle Clouthier. Licensed under MIT OR Apache-2.0.
+// Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
 //! Verification against NIST Statistical Reference Datasets (StRD),
 //! Univariate Summary Statistics: NumAcc1–NumAcc4.
 //! https://www.itl.nist.gov/div898/strd/univ/homepage.html
