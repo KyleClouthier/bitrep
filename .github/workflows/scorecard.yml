@@ -1,0 +1,52 @@
+# OpenSSF Scorecard — automated supply-chain security posture scoring
+# (branch protection, token permissions, pinned actions, dependency update
+# tooling, etc.). Results upload to the GitHub code-scanning dashboard and, with
+# publish_results, to the public OpenSSF Scorecard API that backs the README badge.
+#
+# Runs on the default branch only (Scorecard evaluates the default branch) plus
+# a weekly schedule so the score tracks over time.
+name: scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: "27 5 * * 1" # weekly, Monday 05:27 UTC
+  push:
+    branches: [main, ci-supplychain] # TEMPORARY: remove ci-supplychain before merge
+
+# Least privilege: only the analysis job widens permissions, and only to what
+# the SARIF upload + results publishing require.
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # upload SARIF to code-scanning
+      id-token: write # OIDC token to publish results to the Scorecard API
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run analysis
+        uses: ossf/scorecard-action@v2
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publish to the public OpenSSF API so the README badge populates.
+          # The Scorecard API only accepts results from the default branch, so
+          # publishing is scoped to main; branch/PR runs still do the full
+          # analysis and SARIF upload, just without publishing. (Repo is public.)
+          publish_results: ${{ github.ref == 'refs/heads/main' }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SARIF file
+          path: results.sarif
+          retention-days: 5
+      - name: Upload to code-scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif

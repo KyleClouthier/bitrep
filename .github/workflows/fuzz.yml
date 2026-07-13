@@ -1,0 +1,42 @@
+# Scheduled differential fuzzing.
+#
+# The fuzz/ crate holds cargo-fuzz (libFuzzer) targets that check bitrep's exact
+# sum against an independent BigInt oracle and hammer the codecs. CI already
+# proves the algebra (Kani) and correctness (proptest); this job keeps the
+# coverage-guided differential search running continuously to catch regressions
+# a fixed test set would miss. Bounded per target so a run always terminates.
+name: fuzz
+
+on:
+  schedule:
+    - cron: "17 3 * * *" # nightly, 03:17 UTC
+  workflow_dispatch:
+  push:
+    branches: [ci-supplychain] # TEMPORARY: remove before merge (nightly + manual otherwise)
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fuzz:
+    name: fuzz ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in sync with fuzz/fuzz_targets/ (fuzz/Cargo.toml [[bin]] entries).
+        target: [sum_vs_oracle, codec_robustness, toolkit_decoders]
+    steps:
+      - uses: actions/checkout@v4
+      # libFuzzer / cargo-fuzz needs a nightly toolchain for the sanitizer flags.
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: taiki-e/install-action@cargo-fuzz
+      - name: fuzz ${{ matrix.target }} (bounded)
+        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=300 -rss_limit_mb=4096
+      - name: upload crash artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}/
+          if-no-files-found: ignore

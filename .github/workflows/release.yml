@@ -91,9 +91,22 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [linux, windows, macos, sdist]
     runs-on: ubuntu-22.04
+    # Signed SLSA build provenance for every published wheel + sdist. Keyless
+    # (Sigstore OIDC) via actions/attest-build-provenance — no long-lived keys.
+    permissions:
+      contents: write # attach/associate attestations with the repo
+      id-token: write # OIDC identity for keyless Sigstore signing
+      attestations: write # write the provenance attestation
     steps:
       - uses: actions/download-artifact@v4
         with: { pattern: "wheels-*", merge-multiple: true, path: dist }
+      # Provenance is generated BEFORE upload so the signed digests are exactly
+      # the bytes that get published. Verify later with:
+      #   gh attestation verify <wheel> --repo KyleClouthier/bitrep
+      - name: Generate build provenance for wheels + sdist
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "dist/*"
       - uses: PyO3/maturin-action@v1
         with:
           command: upload
@@ -105,6 +118,13 @@ jobs:
     name: build + publish npm (on tag)
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-22.04
+    # npm publish --provenance emits SLSA provenance to the npm registry
+    # (the public "provenance" badge on npmjs.com), and we additionally record
+    # a GitHub attestation for the exact tarball. Both are keyless via OIDC.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -117,6 +137,13 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
+      - name: Pack tarball and attest its provenance
+        working-directory: bindings/wasm/pkg
+        run: npm pack
+      - name: Generate build provenance for the npm tarball
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "bindings/wasm/pkg/*.tgz"
       - name: Publish (skip if this version is already on npm)
         working-directory: bindings/wasm/pkg
         env:
@@ -126,5 +153,27 @@ jobs:
           if npm view "bitrep@$VER" version >/dev/null 2>&1; then
             echo "bitrep@$VER is already on npm — nothing to publish."
           else
-            npm publish --access public
+            # --provenance: npm generates + uploads SLSA provenance (needs id-token: write).
+            npm publish --access public --provenance
           fi
+
+  attest-crate:
+    name: attest crate provenance (on tag)
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-22.04
+    # bitrep is published to crates.io out-of-band (cargo publish). We still
+    # record signed provenance for the exact .crate file a tag produces, so a
+    # consumer can tie the crates.io artifact back to this commit + workflow.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Package the crate
+        run: cargo package -p bitrep --allow-dirty
+      - name: Generate build provenance for the .crate
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "target/package/bitrep-*.crate"
