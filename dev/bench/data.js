@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783945598165,
+  "lastUpdate": 1783947206122,
   "repoUrl": "https://github.com/KyleClouthier/bitrep",
   "entries": {
     "Benchmark": [
@@ -239,6 +239,126 @@ window.BENCHMARK_DATA = {
             "name": "merge/100-shards-of-10k",
             "value": 2312,
             "range": "± 3",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "committer": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "distinct": true,
+          "id": "b489d3800d9226ee2f3a5998d57ea5c37e92fa40",
+          "message": "Simplify FloatGCounter proofs: drop redundant ejoin wrappers\n\nPer Lean Zulip feedback (Yan Yablonovskiy): the ejoin_comm/assoc/idem\nwrapper theorems were redundant restatements of core Nat.max lemmas.\njoin_comm/assoc/idem now defer directly to Nat.max_comm/assoc/self. Fewer\nhoops for a reviewer, same proof, still Lean-core-only with zero sorry.\nComparator theorem list unchanged (only ever referenced the join_* CRDT laws).",
+          "timestamp": "2026-07-13T08:49:43-04:00",
+          "tree_id": "3474d9cb03b98a9b2e0234120655aa44a39d7a7d",
+          "url": "https://github.com/KyleClouthier/bitrep/commit/b489d3800d9226ee2f3a5998d57ea5c37e92fa40"
+        },
+        "date": 1783947205162,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "sum/naive/1000",
+            "value": 877,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000",
+            "value": 3679,
+            "range": "± 51",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000",
+            "value": 2425,
+            "range": "± 11",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000",
+            "value": 2878,
+            "range": "± 46",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000",
+            "value": 2404,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/100000",
+            "value": 93711,
+            "range": "± 97",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/100000",
+            "value": 374348,
+            "range": "± 317",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/100000",
+            "value": 271628,
+            "range": "± 2040",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/100000",
+            "value": 490938,
+            "range": "± 4053",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/100000",
+            "value": 510750,
+            "range": "± 1055",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/1000000",
+            "value": 938350,
+            "range": "± 933",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000000",
+            "value": 3744762,
+            "range": "± 53372",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000000",
+            "value": 2737134,
+            "range": "± 47347",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000000",
+            "value": 4956668,
+            "range": "± 25071",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000000",
+            "value": 5063404,
+            "range": "± 8912",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "merge/100-shards-of-10k",
+            "value": 2650,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
