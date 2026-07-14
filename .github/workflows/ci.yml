@@ -5,8 +5,7 @@ name: CI
 
 on:
   push:
-    # TEMPORARY: relsketch-v04 — remove before merge (branch CI for the v0.4 work).
-    branches: [main, relsketch-v04]
+    branches: [main]
   pull_request:
 
 env:
