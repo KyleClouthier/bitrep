@@ -1,5 +1,5 @@
 // Copyright (c) 2026 Kyle Clouthier / Clouthier Simulation Labs. Licensed under MIT OR Apache-2.0.
-//! Probe: the first float-sum counter CRDT, tortured.
+//! Example: the first float-sum counter CRDT, tortured.
 //!
 //! Counter CRDTs (G-Counter, PN-Counter) have been integer-only for fifteen
 //! years: CRDT merge must be commutative, associative and idempotent, and
