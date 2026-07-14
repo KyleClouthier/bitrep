@@ -627,7 +627,10 @@ fn out_of_range_bucket_key_is_rejected_and_reads_never_panic() {
     // Every read on the boundary state is finite/sane — no panic, no overflow.
     let _ = s.otel_positive_indices();
     let _ = s.otel_negative_indices();
-    assert!(s.quantile(0.5).map(|q| q.is_finite() || q.is_infinite()).unwrap_or(true));
+    assert!(s
+        .quantile(0.5)
+        .map(|q| q.is_finite() || q.is_infinite())
+        .unwrap_or(true));
 
     // Negatives share the ceiling.
     assert!(
