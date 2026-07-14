@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784050998614,
+  "lastUpdate": 1784052364335,
   "repoUrl": "https://github.com/KyleClouthier/bitrep",
   "entries": {
     "Benchmark": [
@@ -599,6 +599,126 @@ window.BENCHMARK_DATA = {
             "name": "merge/100-shards-of-10k",
             "value": 2307,
             "range": "± 5",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "committer": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "distinct": true,
+          "id": "a7e0f76a9704be6bcfac12f7456834a823b5aa6e",
+          "message": "style: rustfmt the key-space regression test\n\ncargo fmt --check failed on the assert! in out_of_range_bucket_key_...;\nno functional change (test whitespace only). crates.io 0.4.0 unaffected.",
+          "timestamp": "2026-07-14T14:02:14-04:00",
+          "tree_id": "9211b74de4401a7ea4d46ea3a147a8888e2031bd",
+          "url": "https://github.com/KyleClouthier/bitrep/commit/a7e0f76a9704be6bcfac12f7456834a823b5aa6e"
+        },
+        "date": 1784052363464,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "sum/naive/1000",
+            "value": 877,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000",
+            "value": 3680,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000",
+            "value": 2383,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000",
+            "value": 2777,
+            "range": "± 45",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000",
+            "value": 2403,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/100000",
+            "value": 93750,
+            "range": "± 126",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/100000",
+            "value": 374596,
+            "range": "± 433",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/100000",
+            "value": 227858,
+            "range": "± 1046",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/100000",
+            "value": 492198,
+            "range": "± 4212",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/100000",
+            "value": 510436,
+            "range": "± 1818",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/1000000",
+            "value": 937873,
+            "range": "± 4179",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000000",
+            "value": 3745461,
+            "range": "± 123555",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000000",
+            "value": 2278728,
+            "range": "± 12754",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000000",
+            "value": 4953842,
+            "range": "± 13456",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000000",
+            "value": 5058321,
+            "range": "± 40348",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "merge/100-shards-of-10k",
+            "value": 2646,
+            "range": "± 31",
             "unit": "ns/iter"
           }
         ]
