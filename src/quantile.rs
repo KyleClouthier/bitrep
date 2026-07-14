@@ -495,7 +495,11 @@ impl RelSketch {
     ) -> Option<Self> {
         let mut s = Self::with_sub_bits(sub_bits)?;
         let one_key = (1.0f64.to_bits() >> s.effective_shift()) as i64;
-        fn build(arr: &[(i64, u64)], one_key: i64) -> Option<BTreeMap<u64, u64>> {
+        // Upper end of the reachable key space (key of `f64::MAX`); an index
+        // beyond it "maps outside the key space" (see the doc contract) and
+        // would not round-trip through `from_bytes`, which rejects such keys.
+        let max_key = f64::MAX.to_bits() >> s.effective_shift();
+        fn build(arr: &[(i64, u64)], one_key: i64, max_key: u64) -> Option<BTreeMap<u64, u64>> {
             let mut m = BTreeMap::new();
             let mut prev: Option<i64> = None;
             for &(idx, c) in arr {
@@ -507,15 +511,15 @@ impl RelSketch {
                 }
                 prev = Some(idx);
                 let key = one_key.checked_add(idx)?;
-                if key < 0 {
-                    return None;
+                if key < 0 || key as u64 > max_key {
+                    return None; // outside the reachable key space
                 }
                 m.insert(key as u64, c);
             }
             Some(m)
         }
-        s.pos = build(positive, one_key)?;
-        s.neg = build(negative, one_key)?;
+        s.pos = build(positive, one_key, max_key)?;
+        s.neg = build(negative, one_key, max_key)?;
         s.count = s
             .pos
             .values()
@@ -615,6 +619,17 @@ impl RelSketch {
         let neg = read_map(bytes, &mut at)?;
         if at != bytes.len() {
             return None; // trailing bytes are not canonical
+        }
+        // Bucket keys must lie in the key space reachable from strictly
+        // positive finite samples at this shift (`key_of_positive` of at most
+        // `f64::MAX`). A larger key can never be produced by `add`/collapse,
+        // so it is non-canonical — and it would overflow the signed index
+        // arithmetic in `otel_positive_indices`/`otel_negative_indices`.
+        let max_key = f64::MAX.to_bits() >> (52 - sub_bits as u32 + collapse_shift as u32);
+        if pos.keys().next_back().is_some_and(|&k| k > max_key)
+            || neg.keys().next_back().is_some_and(|&k| k > max_key)
+        {
+            return None;
         }
         Some(Self {
             sub_bits,

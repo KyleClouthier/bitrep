@@ -593,3 +593,45 @@ fn equality_is_bitwise_not_ieee_value() {
         Some(nan_state)
     );
 }
+
+// ---------------------------------------------------------------------------
+// 8. KEY-SPACE CEILING — decoded/constructed bucket keys must stay within the
+//    range reachable from real f64 samples (key of at most f64::MAX). A key
+//    above it is non-canonical AND overflows the signed OTel index arithmetic.
+//    Regression for the two decoder fuzz catches (2026-07-13/14):
+//      * from_bytes accepting an out-of-range key -> i64 subtract overflow in
+//        otel_positive_indices  (crash-c6b293db, 119 bytes).
+//      * from_otel not enforcing the ceiling its own doc promises -> a state
+//        that could not round-trip through from_bytes.
+// ---------------------------------------------------------------------------
+#[test]
+fn out_of_range_bucket_key_is_rejected_and_reads_never_panic() {
+    // from_otel: an index that maps a key beyond f64::MAX's key must be None.
+    // At sub_bits=6, effective_shift = 52-6 = 46, so max_key = f64::MAX bits
+    // >> 46. one_key = 1.0 bits >> 46. An index far past (max_key - one_key)
+    // lands outside the key space.
+    let sub_bits = 6u8;
+    let shift = 52 - sub_bits as u32;
+    let max_key = f64::MAX.to_bits() >> shift;
+    let one_key = (1.0f64.to_bits() >> shift) as i64;
+    let too_big_idx = (max_key as i64 - one_key) + 1; // one past the ceiling
+    assert!(
+        RelSketch::from_otel(sub_bits, &[(too_big_idx, 1)], &[]).is_none(),
+        "from_otel must reject an index outside the key space (doc contract)"
+    );
+    // The largest in-range index is still accepted and round-trips.
+    let ok_idx = max_key as i64 - one_key;
+    let s = RelSketch::from_otel(sub_bits, &[(ok_idx, 1)], &[])
+        .expect("max in-range key must be accepted");
+    assert_eq!(RelSketch::from_bytes(&s.to_bytes()), Some(s.clone()));
+    // Every read on the boundary state is finite/sane — no panic, no overflow.
+    let _ = s.otel_positive_indices();
+    let _ = s.otel_negative_indices();
+    assert!(s.quantile(0.5).map(|q| q.is_finite() || q.is_infinite()).unwrap_or(true));
+
+    // Negatives share the ceiling.
+    assert!(
+        RelSketch::from_otel(sub_bits, &[], &[(too_big_idx, 1)]).is_none(),
+        "from_otel must reject an out-of-range negative index too"
+    );
+}
