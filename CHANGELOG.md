@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-07-14
 
 * `RelSketch` (feature `quantile`) — a reproducible, byte-identical,
   relative-error quantile sketch (DDSketch-family). Integer bit-shift bucket
@@ -26,6 +26,13 @@
   `quantile_decode` fuzz target) — and made byte-distinct `+0.0`/`−0.0` extrema
   compare equal. Equality now mirrors `to_bytes` exactly; byte-identity and the
   canonical encoding are unchanged.
+* `RelSketch` decoders now reject bucket keys outside the reachable key space
+  (a key above `key_of(f64::MAX)` can never be produced by `add`/collapse).
+  Such a key was non-canonical and overflowed the signed OpenTelemetry index
+  arithmetic in `otel_positive_indices`/`otel_negative_indices` (found by the
+  `quantile_decode` fuzz soak). Both `from_bytes` and `from_otel` enforce the
+  ceiling; `from_otel` now also honors its documented "outside the key space"
+  contract. Every accepted state round-trips through `from_bytes`.
 
 ## 0.1.0 — 2026-07-11
 
