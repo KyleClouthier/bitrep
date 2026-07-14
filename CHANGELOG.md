@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 — 2026-07-14
+
+* Docs & polish only, no functional change. README now leads with the full
+  surface — sums, dot products, statistics, and reproducible quantiles
+  (`RelSketch`) — and the "sign a p99" line, instead of just sums/dot products.
+  Example doc headers reworded (`Probe:` → `Example:`); the toolkit test's
+  orphaned `v0.3` tag dropped; the key-space regression test reformatted.
+
 ## 0.4.0 — 2026-07-14
 
 * `RelSketch` (feature `quantile`) — a reproducible, byte-identical,

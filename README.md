@@ -3,9 +3,11 @@
 **Any order. Any hardware. Same bits.**
 
 Order-invariant, bit-identical floating-point reductions for **Rust, JavaScript,
-and Python** — exact sums and dot products whose results (and whole accumulator *state*) are
-byte-identical regardless of summation order, thread count, shard split,
-batch size, SIMD width, or CPU architecture.
+and Python** — exact sums, dot products, statistics, and **reproducible
+quantiles** whose results (and whole accumulator *state*) are byte-identical
+regardless of summation order, thread count, shard split, batch size, SIMD
+width, or CPU architecture. Sign a total, a pooled regression, or a **p99** and
+it verifies on every machine.
 
 [![CI](https://github.com/KyleClouthier/bitrep/actions/workflows/ci.yml/badge.svg)](https://github.com/KyleClouthier/bitrep/actions/workflows/ci.yml)
 [![supply-chain](https://github.com/KyleClouthier/bitrep/actions/workflows/supply-chain.yml/badge.svg)](https://github.com/KyleClouthier/bitrep/actions/workflows/supply-chain.yml)
@@ -31,7 +33,8 @@ pip  install bitrep    # Python    →  https://pypi.org/project/bitrep/
 One Rust engine backs all three: the JavaScript package is the crate compiled to
 **WebAssembly**, the Python package is a native **PyO3** extension. The full API —
 exact sums and dot products, convergent statistics, covariance matrices,
-histograms, receipts, and the CRDT layer — is available in every language, and a
+histograms, reproducible quantiles (`RelSketch`), receipts, and the CRDT layer —
+is available in every language, and a
 receipt hashed in Python matches one hashed in JavaScript byte-for-byte. Binding
 sources are in [`bindings/`](bindings/).
 
