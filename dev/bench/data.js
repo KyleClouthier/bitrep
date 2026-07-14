@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784052364335,
+  "lastUpdate": 1784055035431,
   "repoUrl": "https://github.com/KyleClouthier/bitrep",
   "entries": {
     "Benchmark": [
@@ -719,6 +719,126 @@ window.BENCHMARK_DATA = {
             "name": "merge/100-shards-of-10k",
             "value": 2646,
             "range": "± 31",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "committer": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "distinct": true,
+          "id": "9391214276a3db4849d87dca7bf2f60b2a670394",
+          "message": "docs: tidy example labels and drop orphaned version tag\n\nRename 'Probe:' -> 'Example:' in three example doc headers (they are\nself-contained demos, not the exploratory sense) and drop the 'v0.3'\nqualifier on the toolkit test (the toolkit shipped in v0.2; there was no\n0.3.0 release). Doc-comment only; no functional change.",
+          "timestamp": "2026-07-14T14:46:57-04:00",
+          "tree_id": "9596121c858551b8f6987c84fe9a980e08c0a9c3",
+          "url": "https://github.com/KyleClouthier/bitrep/commit/9391214276a3db4849d87dca7bf2f60b2a670394"
+        },
+        "date": 1784055034907,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "sum/naive/1000",
+            "value": 994,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000",
+            "value": 4156,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000",
+            "value": 2552,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000",
+            "value": 3086,
+            "range": "± 44",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000",
+            "value": 2695,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/100000",
+            "value": 105486,
+            "range": "± 1958",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/100000",
+            "value": 422038,
+            "range": "± 932",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/100000",
+            "value": 221155,
+            "range": "± 312",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/100000",
+            "value": 536251,
+            "range": "± 5049",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/100000",
+            "value": 563941,
+            "range": "± 1640",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/1000000",
+            "value": 1057289,
+            "range": "± 2258",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000000",
+            "value": 4225971,
+            "range": "± 20694",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000000",
+            "value": 2197997,
+            "range": "± 4173",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000000",
+            "value": 5828016,
+            "range": "± 7111",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000000",
+            "value": 5674451,
+            "range": "± 6383",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "merge/100-shards-of-10k",
+            "value": 2961,
+            "range": "± 8",
             "unit": "ns/iter"
           }
         ]
