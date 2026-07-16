@@ -57,6 +57,9 @@ impl SumF64 {
     pub fn merge(&mut self, other: &SumF64) {
         self.0.merge(&other.0);
     }
+    pub fn count(&self) -> u64 {
+        self.0.count()
+    }
     pub fn value(&self) -> f64 {
         self.0.value()
     }
@@ -76,6 +79,9 @@ impl SumF32 {
     }
     pub fn merge(&mut self, other: &SumF32) {
         self.0.merge(&other.0);
+    }
+    pub fn count(&self) -> u64 {
+        self.0.count()
     }
     pub fn value(&self) -> f32 {
         self.0.value()
@@ -97,6 +103,9 @@ impl FastSumF64 {
     }
     pub fn extend_from_slice(&mut self, xs: &[f64]) {
         self.0.extend_from_slice(xs);
+    }
+    pub fn count(&self) -> u64 {
+        self.0.count()
     }
     /// Fold into an exact, mergeable SumF64.
     pub fn finish(&self) -> SumF64 {
@@ -150,6 +159,9 @@ impl MomentsF64 {
     pub fn merge(&mut self, o: &MomentsF64) {
         self.0.merge(&o.0);
     }
+    pub fn count(&self) -> u64 {
+        self.0.count()
+    }
     pub fn mean(&self) -> Result<f64, JsError> {
         self.0.try_mean().map_err(je)
     }
@@ -181,6 +193,9 @@ impl Moments4F64 {
     }
     pub fn merge(&mut self, o: &Moments4F64) {
         self.0.merge(&o.0);
+    }
+    pub fn count(&self) -> u64 {
+        self.0.count()
     }
     pub fn mean(&self) -> Result<f64, JsError> {
         self.0.try_mean().map_err(je)
@@ -220,6 +235,9 @@ impl CovF64 {
     pub fn merge(&mut self, o: &CovF64) {
         self.0.merge(&o.0);
     }
+    pub fn count(&self) -> u64 {
+        self.0.count()
+    }
     pub fn covariance(&self) -> Result<f64, JsError> {
         self.0.try_covariance().map_err(je)
     }
@@ -252,6 +270,9 @@ impl WeightedMomentsF64 {
     }
     pub fn merge(&mut self, o: &WeightedMomentsF64) {
         self.0.merge(&o.0);
+    }
+    pub fn count(&self) -> u64 {
+        self.0.count()
     }
     pub fn mean(&self) -> Result<f64, JsError> {
         self.0.try_mean().map_err(je)

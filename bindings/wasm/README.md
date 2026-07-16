@@ -21,7 +21,7 @@ console.log(s.value());            // 1
 // Exactly-rounded statistics
 const m = new MomentsF64();
 [2, 4, 4, 4, 5, 5, 7, 9].forEach((x) => m.add(x));
-console.log(m.mean(), m.variance()); // 5 4
+console.log(m.mean(), m.variance(), m.count()); // 5 4 8n
 
 // Receipt: same multiset -> same 32-byte hash regardless of order.
 console.log(Buffer.from(s.state_hash()).toString("hex"));

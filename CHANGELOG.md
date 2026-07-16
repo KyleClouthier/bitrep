@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.2 — 2026-07-16
+
+* Python and JavaScript/wasm bindings now expose `count()` on the accumulator
+  and statistics types (`SumF64`, `SumF32`, `FastSumF64`, `MomentsF64`,
+  `Moments4F64`, `CovF64`, `WeightedMomentsF64`) — the number of values
+  accumulated, already part of the serialized state and long available on the
+  Rust core. This closes a binding gap where callers had to infer the count
+  indirectly (which was unreliable for constant-valued data). No change to the
+  Rust core, the byte format, or any golden/conformance vector; the wasm
+  accessor returns a JS `BigInt`.
+
 ## 0.4.1 — 2026-07-14
 
 * Docs & polish only, no functional change. README now leads with the full

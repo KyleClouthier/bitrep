@@ -22,7 +22,7 @@ print(s.value())            # 1.0
 m = bitrep.MomentsF64()
 for x in (2, 4, 4, 4, 5, 5, 7, 9):
     m.add(x)
-print(m.mean(), m.variance())   # 5.0 4.0
+print(m.mean(), m.variance(), m.count())   # 5.0 4.0 8
 
 # Receipt: same multiset -> same 32-byte hash, regardless of order.
 print(s.state_hash().hex())

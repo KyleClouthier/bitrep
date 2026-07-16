@@ -38,6 +38,9 @@ impl SumF64 {
     fn merge(&mut self, other: &SumF64) {
         self.0.merge(&other.0);
     }
+    fn count(&self) -> u64 {
+        self.0.count()
+    }
     fn value(&self) -> f64 {
         self.0.value()
     }
@@ -72,6 +75,9 @@ impl SumF32 {
     fn merge(&mut self, other: &SumF32) {
         self.0.merge(&other.0);
     }
+    fn count(&self) -> u64 {
+        self.0.count()
+    }
     fn value(&self) -> f32 {
         self.0.value()
     }
@@ -105,6 +111,9 @@ impl FastSumF64 {
     }
     fn extend(&mut self, xs: Vec<f64>) {
         self.0.extend_from_slice(&xs);
+    }
+    fn count(&self) -> u64 {
+        self.0.count()
     }
     fn finish(&self) -> SumF64 {
         SumF64(self.0.finish())
@@ -155,6 +164,9 @@ impl MomentsF64 {
     fn merge(&mut self, o: &MomentsF64) {
         self.0.merge(&o.0);
     }
+    fn count(&self) -> u64 {
+        self.0.count()
+    }
     fn mean(&self) -> PyResult<f64> {
         self.0.try_mean().map_err(ve)
     }
@@ -197,6 +209,9 @@ impl Moments4F64 {
     }
     fn merge(&mut self, o: &Moments4F64) {
         self.0.merge(&o.0);
+    }
+    fn count(&self) -> u64 {
+        self.0.count()
     }
     fn mean(&self) -> PyResult<f64> {
         self.0.try_mean().map_err(ve)
@@ -247,6 +262,9 @@ impl CovF64 {
     fn merge(&mut self, o: &CovF64) {
         self.0.merge(&o.0);
     }
+    fn count(&self) -> u64 {
+        self.0.count()
+    }
     fn covariance(&self) -> PyResult<f64> {
         self.0.try_covariance().map_err(ve)
     }
@@ -292,6 +310,9 @@ impl WeightedMomentsF64 {
     }
     fn merge(&mut self, o: &WeightedMomentsF64) {
         self.0.merge(&o.0);
+    }
+    fn count(&self) -> u64 {
+        self.0.count()
     }
     fn mean(&self) -> PyResult<f64> {
         self.0.try_mean().map_err(ve)
