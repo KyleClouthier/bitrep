@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784058129027,
+  "lastUpdate": 1784210393041,
   "repoUrl": "https://github.com/KyleClouthier/bitrep",
   "entries": {
     "Benchmark": [
@@ -959,6 +959,126 @@ window.BENCHMARK_DATA = {
             "name": "merge/100-shards-of-10k",
             "value": 2661,
             "range": "± 6",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "committer": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "distinct": true,
+          "id": "96ee19a4b44423602860b7dba45c4701232022e7",
+          "message": "release: v0.4.2 — expose count() in Python and JS bindings\n\nThe number of accumulated values is already part of the serialized state\nand available on the Rust core, but the Python/wasm bindings did not expose\nit, forcing callers to infer the count indirectly (unreliable for\nconstant-valued data). Add count() to SumF64, SumF32, FastSumF64,\nMomentsF64, Moments4F64, CovF64, and WeightedMomentsF64 in both bindings.\nNo change to the Rust core, the byte format, or any golden/conformance\nvector.",
+          "timestamp": "2026-07-16T09:56:02-04:00",
+          "tree_id": "620758ac3fd1b5fbeeae82a40ff4812091a3c782",
+          "url": "https://github.com/KyleClouthier/bitrep/commit/96ee19a4b44423602860b7dba45c4701232022e7"
+        },
+        "date": 1784210392176,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "sum/naive/1000",
+            "value": 877,
+            "range": "± 49",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000",
+            "value": 3678,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000",
+            "value": 2254,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000",
+            "value": 2708,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000",
+            "value": 2488,
+            "range": "± 384",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/100000",
+            "value": 93574,
+            "range": "± 185",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/100000",
+            "value": 374351,
+            "range": "± 2912",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/100000",
+            "value": 221281,
+            "range": "± 6584",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/100000",
+            "value": 505540,
+            "range": "± 1612",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/100000",
+            "value": 495886,
+            "range": "± 947",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/1000000",
+            "value": 937073,
+            "range": "± 1014",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000000",
+            "value": 3744366,
+            "range": "± 3817",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000000",
+            "value": 2217127,
+            "range": "± 9453",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000000",
+            "value": 5098444,
+            "range": "± 12243",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000000",
+            "value": 4913778,
+            "range": "± 164494",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "merge/100-shards-of-10k",
+            "value": 2642,
+            "range": "± 7",
             "unit": "ns/iter"
           }
         ]
