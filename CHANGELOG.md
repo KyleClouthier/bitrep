@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 — 2026-07-17
+
+* JavaScript/wasm bindings reach exact-tier parity with Python:
+  `SumF64.try_unmerge`, `CovMatrixF64.regression_exact`,
+  `CovMatrixF64.sub` now exposed on npm. Binding READMEs updated.
+  No change to the Rust core or the byte format.
+
 ## 0.5.0 — 2026-07-17
 
 **The exact tier: group subtraction and correctly rounded regression.**

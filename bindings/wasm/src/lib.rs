@@ -57,6 +57,12 @@ impl SumF64 {
     pub fn merge(&mut self, other: &SumF64) {
         self.0.merge(&other.0);
     }
+    /// Exactly remove a previously merged contribution (group subtraction).
+    /// Returns false (state untouched) if `other` carries NaN/infinity flags
+    /// or a larger count.
+    pub fn try_unmerge(&mut self, other: &SumF64) -> bool {
+        self.0.try_unmerge(&other.0)
+    }
     pub fn count(&self) -> u64 {
         self.0.count()
     }
@@ -340,6 +346,16 @@ impl CovMatrixF64 {
     }
     pub fn regression(&self) -> Result<Vec<f64>, JsError> {
         self.0.try_regression().map_err(je)
+    }
+    /// Exact tier: correctly rounded coefficients — exact integer normal
+    /// equations, one correct rounding each; bit-identical on any machine.
+    pub fn regression_exact(&self) -> Result<Vec<f64>, JsError> {
+        self.0.try_regression_exact().map_err(je)
+    }
+    /// Exactly remove a previously merged contribution (downdating /
+    /// unlearning). All-or-nothing; errors leave the state untouched.
+    pub fn sub(&mut self, o: &CovMatrixF64) -> Result<(), JsError> {
+        self.0.try_sub(&o.0).map_err(je)
     }
     pub fn encode(&self) -> Vec<u8> {
         self.0.encode()
