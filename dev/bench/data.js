@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784322828582,
+  "lastUpdate": 1784323985338,
   "repoUrl": "https://github.com/KyleClouthier/bitrep",
   "entries": {
     "Benchmark": [
@@ -1439,6 +1439,126 @@ window.BENCHMARK_DATA = {
             "name": "merge/100-shards-of-10k",
             "value": 2960,
             "range": "± 2",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "committer": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "distinct": true,
+          "id": "72f833a527ee794c4010f11184d004b52afba984",
+          "message": "ci: exact-tier follow-ups — clippy allow in oracle test; comparator chain updated for the new inverse lemmas\n\nSolution.lean regenerated as the byte-for-byte concatenation of the proof\nfiles; unmerge_inverts_merge and lsum_unmerge added to the trusted spec\n(Challenge.lean), the check.sh axiom audit, and config.json. Both CI guards\nverified locally; Lean check green with the new audits.",
+          "timestamp": "2026-07-17T17:29:30-04:00",
+          "tree_id": "68af0def517276b3300b159d706e28383ed91a89",
+          "url": "https://github.com/KyleClouthier/bitrep/commit/72f833a527ee794c4010f11184d004b52afba984"
+        },
+        "date": 1784323985055,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "sum/naive/1000",
+            "value": 878,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000",
+            "value": 3679,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000",
+            "value": 2280,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000",
+            "value": 2711,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000",
+            "value": 2505,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/100000",
+            "value": 93585,
+            "range": "± 113",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/100000",
+            "value": 374317,
+            "range": "± 382",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/100000",
+            "value": 259221,
+            "range": "± 2851",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/100000",
+            "value": 505183,
+            "range": "± 632",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/100000",
+            "value": 495260,
+            "range": "± 4579",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/1000000",
+            "value": 936461,
+            "range": "± 1476",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000000",
+            "value": 3743428,
+            "range": "± 3297",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000000",
+            "value": 2593519,
+            "range": "± 9486",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000000",
+            "value": 5100477,
+            "range": "± 15064",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000000",
+            "value": 4909691,
+            "range": "± 16858",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "merge/100-shards-of-10k",
+            "value": 2655,
+            "range": "± 4",
             "unit": "ns/iter"
           }
         ]
