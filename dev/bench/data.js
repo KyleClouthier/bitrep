@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784322533992,
+  "lastUpdate": 1784322828582,
   "repoUrl": "https://github.com/KyleClouthier/bitrep",
   "entries": {
     "Benchmark": [
@@ -1319,6 +1319,126 @@ window.BENCHMARK_DATA = {
             "name": "merge/100-shards-of-10k",
             "value": 2309,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "committer": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "distinct": true,
+          "id": "554e0fa76d5c030e8b3c4e5995aca436409695fc",
+          "message": "v0.5.1 — JS/wasm bindings reach exact-tier parity\n\nSumF64.try_unmerge, CovMatrixF64.regression_exact and CovMatrixF64.sub are\nnow exposed on npm, matching the Python surface. Binding READMEs updated.\nNo change to the Rust core or the byte format.",
+          "timestamp": "2026-07-17T17:10:14-04:00",
+          "tree_id": "8d3f850677a5ede132686e73bb885295e521954b",
+          "url": "https://github.com/KyleClouthier/bitrep/commit/554e0fa76d5c030e8b3c4e5995aca436409695fc"
+        },
+        "date": 1784322828088,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "sum/naive/1000",
+            "value": 993,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000",
+            "value": 4156,
+            "range": "± 16",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000",
+            "value": 2608,
+            "range": "± 29",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000",
+            "value": 3060,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000",
+            "value": 2767,
+            "range": "± 19",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/100000",
+            "value": 105436,
+            "range": "± 111",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/100000",
+            "value": 421859,
+            "range": "± 289",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/100000",
+            "value": 232004,
+            "range": "± 282",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/100000",
+            "value": 566843,
+            "range": "± 1166",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/100000",
+            "value": 554009,
+            "range": "± 8619",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/1000000",
+            "value": 1056452,
+            "range": "± 3288",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000000",
+            "value": 4224162,
+            "range": "± 2602",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000000",
+            "value": 2202085,
+            "range": "± 1881",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000000",
+            "value": 5819121,
+            "range": "± 30248",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000000",
+            "value": 5569705,
+            "range": "± 8928",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "merge/100-shards-of-10k",
+            "value": 2960,
+            "range": "± 2",
             "unit": "ns/iter"
           }
         ]
