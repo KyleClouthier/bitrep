@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784323985338,
+  "lastUpdate": 1784324638325,
   "repoUrl": "https://github.com/KyleClouthier/bitrep",
   "entries": {
     "Benchmark": [
@@ -1559,6 +1559,126 @@ window.BENCHMARK_DATA = {
             "name": "merge/100-shards-of-10k",
             "value": 2655,
             "range": "± 4",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "committer": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "distinct": true,
+          "id": "632a36bc724ef9d371fe94d0e1daddcd507b613b",
+          "message": "ci: gate unmerge_assign with the stats feature — its only consumer — so default-features builds carry no dead code under the workflow-wide -D warnings",
+          "timestamp": "2026-07-17T17:40:18-04:00",
+          "tree_id": "4b76679d76266c694f9b0e914feadd85865a1484",
+          "url": "https://github.com/KyleClouthier/bitrep/commit/632a36bc724ef9d371fe94d0e1daddcd507b613b"
+        },
+        "date": 1784324637500,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "sum/naive/1000",
+            "value": 877,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000",
+            "value": 3677,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000",
+            "value": 2255,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000",
+            "value": 2717,
+            "range": "± 22",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000",
+            "value": 2477,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/100000",
+            "value": 93675,
+            "range": "± 118",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/100000",
+            "value": 374370,
+            "range": "± 396",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/100000",
+            "value": 259958,
+            "range": "± 1493",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/100000",
+            "value": 505410,
+            "range": "± 1506",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/100000",
+            "value": 495714,
+            "range": "± 3026",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/1000000",
+            "value": 937543,
+            "range": "± 931",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000000",
+            "value": 3743255,
+            "range": "± 3668",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000000",
+            "value": 2598423,
+            "range": "± 8571",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000000",
+            "value": 5102784,
+            "range": "± 14435",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000000",
+            "value": 4914447,
+            "range": "± 7584",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "merge/100-shards-of-10k",
+            "value": 2673,
+            "range": "± 9",
             "unit": "ns/iter"
           }
         ]
