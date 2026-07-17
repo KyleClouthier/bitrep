@@ -175,6 +175,9 @@ impl DotF64 {
     /// Exactly remove a previously merged contribution. Refuses (returns
     /// `false`, self untouched) if `other` recorded a product underflow —
     /// the underflow flag is sticky (semilattice), not subtractable.
+    /// (Consumed by the stats-gated covariance state; gated with it so the
+    /// default build carries no dead code under -D warnings.)
+    #[cfg(feature = "stats")]
     pub(crate) fn unmerge_assign(&mut self, other: &DotF64) -> bool {
         if other.underflowed {
             return false;
