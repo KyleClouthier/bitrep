@@ -385,6 +385,24 @@ catastrophic-cancellation regimes (mean $10^8$, spread $10^{-3}$: the textbook o
 a \emph{negative} variance; the reads here are exactly rounded). The two-product domain limits apply per
 monomial and are detected, never silent.
 
+\paragraph{The group tier (v0.5).} The accumulator's two's-complement integer is
+not merely a commutative monoid but an abelian \emph{group}: finite-valued
+states subtract exactly. bitrep v0.5.0 exposes this as \texttt{try\_unmerge}
+(and \texttt{try\_sub} on the second-moment state): removing a previously
+merged contribution yields a state byte-identical to one that never contained
+it --- exact downdating at any removal fraction, where floating-point
+downdating is classically unstable. The non-finite flags (NaN/infinity) are
+sticky semilattice elements, not group elements, so subtraction refuses
+flagged subtrahends --- deletion is possible exactly for the cancellative part
+of the state, and provably impossible for extremum-style summaries. The group
+inverse is Kani-verified at the bit level (borrow chain inverts carry chain
+for all valid states) and proved at the model level in Lean
+(\texttt{unmerge\_inverts\_merge}, \texttt{lsum\_unmerge}). The same release
+adds a correctly rounded regression readout (exact integer normal equations,
+fraction-free Bareiss, one rounding per coefficient); its treatment, with the
+associated verifiable-unlearning receipt system, is deferred to a companion
+note.
+
 \section{Limitations}
 
 The Lean proofs establish the construction's value-level algebra, not an end-to-end verification of the
