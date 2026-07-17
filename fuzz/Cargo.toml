@@ -40,3 +40,9 @@ path = "fuzz_targets/quantile_decode.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "sub_roundtrip"
+path = "fuzz_targets/sub_roundtrip.rs"
+test = false
+doc = false

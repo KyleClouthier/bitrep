@@ -37,7 +37,9 @@ a.merge(b)                   # idempotent, order-invariant
 Exact accumulators (`SumF64`, `SumF32`, `FastSumF64`), exact dot product
 (`DotF64`, `dot`), convergent statistics (`MomentsF64`, `Moments4F64` with
 skewness/kurtosis, `CovF64` regression, `WeightedMomentsF64`, `PnMomentsF64`
-retractable, `CovMatrixF64` multiple regression), `HistogramF64` (exact counts +
+retractable, `CovMatrixF64` multiple regression — with the v0.5 exact tier:
+`regression_exact()` for correctly rounded coefficients and `sub()` for exact
+downdating/unlearning, plus `SumF64.try_unmerge`), `HistogramF64` (exact counts +
 honest quantile bounds), `ExtremaF64`, signed **receipts** (`state_hash`), and the
 CRDT layer (`SumMap`, `MomentsMap`, `ReplicatedSum`, `DeltasSum`).
 

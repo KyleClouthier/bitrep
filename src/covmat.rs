@@ -291,3 +291,143 @@ impl crate::Mergeable for CovMatrixF64 {
         CovMatrixF64::decode(bytes)
     }
 }
+
+// ---------------------------------------------------------------------------
+// Exact-tier extension (branch: exact-tier): downdating + correctly-rounded
+// regression. See probe474/probe475 (2026-07-17) for the validation trail.
+
+/// Fraction-free Bareiss determinant of an integer matrix (exact; the
+/// interior division is exact by the Bareiss identity). Partial row pivoting
+/// on zero pivots only — the value is order-independent regardless.
+fn bareiss_det(mut m: Vec<Vec<BigInt>>) -> BigInt {
+    let n = m.len();
+    let mut sign = 1i8;
+    let mut prev = BigInt::from(1u8);
+    for k in 0..n {
+        if m[k][k].bits() == 0 {
+            match (k + 1..n).find(|&r| m[r][k].bits() != 0) {
+                Some(p) => {
+                    m.swap(k, p);
+                    sign = -sign;
+                }
+                None => return BigInt::from(0u8),
+            }
+        }
+        for i in k + 1..n {
+            for j in k + 1..n {
+                let t = &m[i][j] * &m[k][k] - &m[i][k] * &m[k][j];
+                m[i][j] = t / &prev;
+            }
+            m[i][k] = BigInt::from(0u8);
+        }
+        prev = m[k][k].clone();
+    }
+    let det = m[n - 1][n - 1].clone();
+    if sign < 0 {
+        -det
+    } else {
+        det
+    }
+}
+
+impl CovMatrixF64 {
+    /// Exactly remove a previously merged contribution: `self -= other`
+    /// (downdating / unlearning). All-or-nothing: on any error the state is
+    /// unchanged. Errors if dimensions mismatch, if `other` carries
+    /// non-finite flags (sticky, non-cancellative), or if `other`'s counts
+    /// exceed `self`'s. On success the state is byte-identical to one that
+    /// never contained `other`'s rows — exact downdating at any removal
+    /// fraction and any conditioning.
+    pub fn try_sub(&mut self, o: &CovMatrixF64) -> Result<(), StatsError> {
+        if self.d != o.d || self.mismatched || o.mismatched {
+            return Err(StatsError::Degenerate);
+        }
+        let mut tmp = self.clone();
+        for (a, b) in tmp.sums.iter_mut().zip(&o.sums) {
+            if !a.try_unmerge(b) {
+                return Err(StatsError::Degenerate);
+            }
+        }
+        for (a, b) in tmp.prods.iter_mut().zip(&o.prods) {
+            if !a.unmerge_assign(b) {
+                return Err(StatsError::Degenerate);
+            }
+        }
+        *self = tmp;
+        Ok(())
+    }
+
+    /// **Exact tier**: correctly rounded multiple-regression coefficients.
+    ///
+    /// The normal-equation system is formed from the state's EXACT integers
+    /// (no rounding), solved by Cramer's rule with fraction-free Bareiss
+    /// determinants (exact), and each coefficient is rounded ONCE, correctly
+    /// (round-to-nearest, ties-to-even). The returned bits are therefore a
+    /// mathematical function of the data alone — identical on any machine,
+    /// any implementation, by definition rather than by construction.
+    /// Immune to conditioning: at condition numbers where QR and the
+    /// deterministic tier fail outright, this returns the exact solution's
+    /// correct rounding (probe474). Cost: O(d) exact determinants of
+    /// (d+1)-square integer matrices — fine for regression-sized d.
+    pub fn try_regression_exact(&self) -> Result<Vec<f64>, StatsError> {
+        let n = self.check()?;
+        let d = self.d;
+        let m = d + 1;
+        let u = unit_pow(1);
+        let zero = BigInt::from(0u8);
+        // Row-scaled integer augmented system (row scaling preserves the
+        // solution). sum_int AND dot_int both return integers on the
+        // 2^-1074 grid (TwoProduct keeps exact products on the f64 grid),
+        // so every row becomes integral after scaling by u = 2^1074:
+        //   row0:  [n*u, S_0 .. S_{d-1}        | Sy   ]
+        //   rowi:  [S_i, Q_{i,0} .. Q_{i,d-1}  | Qy_i ]
+        let mut a = vec![vec![zero.clone(); m]; m];
+        let mut b = vec![zero; m];
+        let mut s = Vec::with_capacity(d);
+        for i in 0..d {
+            s.push(sum_int(&self.sums[i])?);
+        }
+        a[0][0] = BigInt::from(n) * &u;
+        for i in 0..d {
+            a[0][i + 1] = s[i].clone();
+            a[i + 1][0] = s[i].clone();
+        }
+        b[0] = sum_int(&self.sums[d])?;
+        let tri = d * (d + 1) / 2;
+        for i in 0..d {
+            for j in 0..d {
+                let (lo, hi) = if i <= j { (i, j) } else { (j, i) };
+                a[i + 1][j + 1] = dot_int(&self.prods[self.tri_index(lo, hi)])?;
+            }
+            b[i + 1] = dot_int(&self.prods[tri + i])?;
+        }
+        let mut det = bareiss_det(a.clone());
+        if det.bits() == 0 {
+            return Err(StatsError::Degenerate);
+        }
+        let flip = det < BigInt::from(0u8);
+        if flip {
+            det = -det;
+        }
+        let mut out = Vec::with_capacity(m);
+        for col in 0..m {
+            let mut ai = a.clone();
+            for r in 0..m {
+                ai[r][col] = b[r].clone();
+            }
+            let mut di = bareiss_det(ai);
+            if flip {
+                di = -di;
+            }
+            out.push(round_rational(&di, &det));
+        }
+        Ok(out)
+    }
+
+    /// Convenience: [`try_regression_exact`](Self::try_regression_exact),
+    /// errors as NaN.
+    pub fn regression_exact(&self) -> Vec<f64> {
+        self.try_regression_exact()
+            .unwrap_or_else(|_| vec![f64::NAN; self.d + 1])
+    }
+}

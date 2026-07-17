@@ -201,3 +201,46 @@ fn extrema_bytes_roundtrip() {
         assert_eq!(e.to_bytes(), bytes);
     }
 }
+
+/// Exact-tier (v0.5.0): merging a contribution and then unmerging it restores
+/// the ORIGINAL state exactly — for ALL pairs of valid states. This is the
+/// bit-level group-inverse claim behind downdating/unlearning: the borrow
+/// chain of `try_unmerge` inverts the carry chain of `merge` across all 34
+/// limbs. (Model-level counterpart: `unmerge_inverts_merge` in
+/// proofs/OrderInvariance.lean.) Fixed-shape limb arithmetic: fast set.
+#[kani::proof]
+fn unmerge_inverts_merge() {
+    let bytes_a: [u8; SumF64::BYTES] = kani::any();
+    let mut bytes_b: [u8; SumF64::BYTES] = kani::any();
+    // b must be finite-only: zero the specials flag byte (limbs..limbs+1).
+    bytes_b[SumF64::BYTES - 9] = 0;
+    let (Some(a0), Some(b0)) = (SumF64::from_bytes(&bytes_a), SumF64::from_bytes(&bytes_b)) else {
+        return;
+    };
+    // count must not saturate, or the subtraction cannot restore it.
+    kani::assume(a0.count() <= u64::MAX - b0.count());
+    let mut c = a0.clone();
+    c.merge(&b0);
+    assert!(c.try_unmerge(&b0));
+    assert_eq!(c, a0);
+}
+
+/// Exact-tier (v0.5.0): refusal safety. Whenever `try_unmerge` declines —
+/// specials-carrying subtrahend or count underflow — the state is left
+/// byte-identical; and an overcount subtrahend is ALWAYS declined.
+#[kani::proof]
+fn unmerge_refusal_leaves_state_untouched() {
+    let bytes_a: [u8; SumF64::BYTES] = kani::any();
+    let bytes_b: [u8; SumF64::BYTES] = kani::any();
+    let (Some(a0), Some(b0)) = (SumF64::from_bytes(&bytes_a), SumF64::from_bytes(&bytes_b)) else {
+        return;
+    };
+    let mut a = a0.clone();
+    let res = a.try_unmerge(&b0);
+    if !res {
+        assert_eq!(a, a0);
+    }
+    if b0.count() > a0.count() {
+        assert!(!res);
+    }
+}

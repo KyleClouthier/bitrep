@@ -143,6 +143,19 @@ what the v0.2 `stats` toolkit turns from "trust me" into "check me".
   data and merge to exact pooled mean / variance / covariance / regression.
   (Auditability, not privacy — compose with DP / secure-aggregation where
   privacy is required.)
+* **The exact tier (v0.5)** — group subtraction and correctly rounded
+  regression. `try_unmerge` / `try_sub` remove a merged contribution
+  *exactly* (byte-identical to never having added it): leave-one-out
+  diagnostics, influence analysis, and verifiable unlearning for
+  least-squares models, at any removal fraction and any conditioning —
+  where floating-point downdating is classically unstable.
+  `regression_exact` solves the normal equations in exact integer
+  arithmetic and rounds each coefficient once, correctly: coefficients
+  whose bits are defined by the mathematics, not the machine — and exact
+  singularity reported honestly instead of a blurred answer. Group inverse
+  Kani-verified at the bit level and proved in Lean at the model level;
+  the exact solve verified against an independent rational oracle and
+  fuzzed end to end.
 
 ## Who this is for
 

@@ -38,6 +38,13 @@ impl SumF64 {
     fn merge(&mut self, other: &SumF64) {
         self.0.merge(&other.0);
     }
+    /// Exactly remove a previously merged contribution (group subtraction).
+    /// Returns False (state untouched) if `other` carries NaN/infinity flags
+    /// or a larger count. Kani-verified: the borrow chain inverts merge's
+    /// carry chain for all valid states.
+    fn try_unmerge(&mut self, other: &SumF64) -> bool {
+        self.0.try_unmerge(&other.0)
+    }
     fn count(&self) -> u64 {
         self.0.count()
     }
@@ -402,6 +409,18 @@ impl CovMatrixF64 {
     }
     fn regression(&self) -> PyResult<Vec<f64>> {
         self.0.try_regression().map_err(ve)
+    }
+    /// Exact tier: correctly rounded coefficients — the normal equations are
+    /// solved in exact integer arithmetic and each coefficient rounded once.
+    /// Bit-identical on any machine by mathematical definition.
+    fn regression_exact(&self) -> PyResult<Vec<f64>> {
+        self.0.try_regression_exact().map_err(ve)
+    }
+    /// Exactly remove a previously merged contribution (downdating /
+    /// unlearning). All-or-nothing; raises on dimension mismatch, on
+    /// non-finite-flagged subtrahends, or on count underflow.
+    fn sub(&mut self, o: &CovMatrixF64) -> PyResult<()> {
+        self.0.try_sub(&o.0).map_err(ve)
     }
     fn encode<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
         PyBytes::new_bound(py, &self.0.encode())

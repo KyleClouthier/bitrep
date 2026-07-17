@@ -97,4 +97,18 @@ theorem merge_comm (a b : Int) : a + b = b + a := by omega
 /-- Merging associates (any merge tree — restated pointwise). -/
 theorem merge_assoc (a b c : Int) : (a + b) + c = a + (b + c) := by omega
 
+/-- Exact-tier (v0.5.0): unmerging is the group inverse of merging at the
+model level — subtracting a merged contribution restores the original state
+exactly. Bit-level counterpart: the `unmerge_inverts_merge` Kani harness
+(borrow chain inverts carry chain across all limbs). -/
+theorem unmerge_inverts_merge (a b : Int) : (a + b) - b = a := by omega
+
+/-- List form: removing a sub-list's contribution from a concatenation's sum
+yields exactly the remaining list's sum — the model statement of exact
+downdating / verifiable unlearning (probe475, U1). -/
+theorem lsum_unmerge (l₁ l₂ : List Int) :
+    lsum (l₁ ++ l₂) - lsum l₂ = lsum l₁ := by
+  rw [lsum_append]; omega
+
 end Bitrep
+

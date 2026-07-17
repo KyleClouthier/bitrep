@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "bitrep"
-version = "0.4.2"
+version = "0.5.0"
 description = "Exact, order-invariant, bit-identical floating-point reductions and CRDTs (Rust core)."
 readme = "README.md"
 requires-python = ">=3.8"

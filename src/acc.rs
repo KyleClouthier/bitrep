@@ -576,3 +576,37 @@ fn pow2(k: i32) -> f64 {
         f64::from_bits(1u64 << (k + 1074))
     }
 }
+
+// ---------------------------------------------------------------------------
+// Exact-tier extension (branch: exact-tier): group subtraction.
+// The limb accumulator is two's-complement, so finite states form an abelian
+// GROUP — subtraction is exact. The special flags (NaN/±inf) are sticky
+// booleans (a semilattice, not a group): a state that absorbed a special can
+// never attribute it, so subtraction refuses specials-carrying subtrahends.
+impl SumF64 {
+    /// Exactly remove a previously merged contribution: `self -= other`.
+    ///
+    /// Returns `false` (leaving `self` untouched) if `other` carries
+    /// NaN/infinity flags (non-cancellative) or a larger count than `self`.
+    /// On `true`, the state is exactly what it would have been had `other`'s
+    /// values never been added — byte-identical.
+    pub fn try_unmerge(&mut self, other: &SumF64) -> bool {
+        if other.specials.nan || other.specials.pos_inf || other.specials.neg_inf {
+            return false;
+        }
+        if other.count > self.count {
+            return false;
+        }
+        let mut borrow = 0u64;
+        for i in 0..LIMBS {
+            let (a, b1) = self.limbs[i].overflowing_sub(other.limbs[i]);
+            let (b, b2) = a.overflowing_sub(borrow);
+            self.limbs[i] = b;
+            borrow = (b1 as u64) + (b2 as u64);
+        }
+        // final borrow wraps the two's-complement representation: correct for
+        // signed values by construction.
+        self.count -= other.count;
+        true
+    }
+}

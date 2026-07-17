@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.5.0 — 2026-07-17
+
+**The exact tier: group subtraction and correctly rounded regression.**
+
+* `SumF64::try_unmerge` — exactly remove a previously merged contribution.
+  The limb accumulator is two's-complement, so finite states form an abelian
+  group and subtraction is exact: after `a.merge(b); a.try_unmerge(b)` the
+  state is byte-identical to never having merged. Refuses (state untouched)
+  subtrahends carrying NaN/infinity flags — those are sticky semilattice
+  flags, not group elements — or counts larger than the minuend's.
+* `CovMatrixF64::try_sub` — all-or-nothing exact downdating of the full
+  second-moment state: remove any contributor's rows, at any fraction of the
+  data and any conditioning, exactly. This is the state-level primitive for
+  leave-one-out diagnostics, influence analysis, and verifiable unlearning
+  of least-squares models.
+* `CovMatrixF64::try_regression_exact` / `regression_exact` — the **exact
+  tier** above the existing deterministic tier: normal-equation entries are
+  taken from the state's exact integers (no rounding), the system is solved
+  by Cramer's rule with fraction-free Bareiss determinants (exact integer
+  arithmetic throughout), and each coefficient is rounded once, correctly
+  (nearest, ties-to-even). The returned bits are a mathematical function of
+  the data alone — identical on any machine and any implementation. Where
+  ill-conditioning makes f64 solves (including QR) fail or drift, this
+  returns the exact solution's correct rounding, and reports exact
+  singularity as `Degenerate` rather than a blurred answer.
+* Verification, matched claim-for-claim: the merge/unmerge group inverse is
+  **Kani-verified** at the bit level for all valid states
+  (`unmerge_inverts_merge`, `unmerge_refusal_leaves_state_untouched`), and
+  proved at the model level in **Lean** (`unmerge_inverts_merge`,
+  `lsum_unmerge`; zero `sorry`, standard axiom base). `regression_exact`
+  (BigInt arithmetic, outside Kani's reach) is verified by an **independent
+  exact rational oracle** — a different algorithm (plain rational Gaussian
+  elimination) bit-compared across randomized systems — and a new
+  coverage-guided fuzz target (`sub_roundtrip`) exercising the group laws
+  end to end. During development the fuzzer correctly flagged that finite
+  inputs can still produce underflow-flagged product states, which `try_sub`
+  rightly refuses; the refusal contract (decline ⇒ state untouched) is part
+  of the tested surface.
+* Python bindings: `SumF64.try_unmerge`, `CovMatrixF64.sub`,
+  `CovMatrixF64.regression_exact`. Byte format unchanged; all existing
+  golden/conformance vectors unaffected.
+
 ## 0.4.2 — 2026-07-16
 
 * Python and JavaScript/wasm bindings now expose `count()` on the accumulator

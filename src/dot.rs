@@ -169,3 +169,16 @@ pub fn dot(xs: &[f64], ys: &[f64]) -> Result<f64, DotError> {
     d.extend_from_slices(xs, ys);
     d.try_value()
 }
+
+// Exact-tier extension (branch: exact-tier): group subtraction.
+impl DotF64 {
+    /// Exactly remove a previously merged contribution. Refuses (returns
+    /// `false`, self untouched) if `other` recorded a product underflow —
+    /// the underflow flag is sticky (semilattice), not subtractable.
+    pub(crate) fn unmerge_assign(&mut self, other: &DotF64) -> bool {
+        if other.underflowed {
+            return false;
+        }
+        self.acc.try_unmerge(&other.acc)
+    }
+}
