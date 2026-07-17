@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784210393041,
+  "lastUpdate": 1784322451766,
   "repoUrl": "https://github.com/KyleClouthier/bitrep",
   "entries": {
     "Benchmark": [
@@ -1079,6 +1079,126 @@ window.BENCHMARK_DATA = {
             "name": "merge/100-shards-of-10k",
             "value": 2642,
             "range": "± 7",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "committer": {
+            "email": "kyleclouthier83@gmail.com",
+            "name": "Kyle Clouthier",
+            "username": "KyleClouthier"
+          },
+          "distinct": true,
+          "id": "03274bc520a82057f252e7d9391091c65a766b04",
+          "message": "v0.5.0 — the exact tier: group subtraction and correctly rounded regression\n\nSumF64::try_unmerge: exact removal of a merged contribution (two's-complement\nborrow chain; refuses sticky NaN/inf flags and count underflow, state\nuntouched on refusal). CovMatrixF64::try_sub: all-or-nothing exact downdating\nof the full second-moment state — leave-one-out, influence analysis, and\nverifiable unlearning for least-squares models, at any removal fraction and\nconditioning. CovMatrixF64::try_regression_exact: normal equations from the\nstate's exact integers, solved by Cramer with fraction-free Bareiss\ndeterminants, one correct rounding per coefficient — bits defined by the\nmathematics, identical on any machine; exact singularity reported as\nDegenerate instead of a blurred answer.\n\nVerification matched claim-for-claim: Kani proves the merge/unmerge group\ninverse and refusal safety at the bit level for all valid states; Lean proves\nthe model-level inverse (unmerge_inverts_merge, lsum_unmerge; zero sorry,\nstandard axiom base); regression_exact is verified against an independent\nexact rational oracle (different algorithm, bit-compared) and a new\ncoverage-guided fuzz target (sub_roundtrip, 3.2M execs clean) whose corpus\nincludes the input demonstrating the underflow-flag refusal path.\n\nPython bindings gain try_unmerge / sub / regression_exact. Byte format\nunchanged; all existing vectors unaffected.",
+          "timestamp": "2026-07-17T17:03:10-04:00",
+          "tree_id": "efa1ac0f6984d133195081eeb47b5669c286ff3e",
+          "url": "https://github.com/KyleClouthier/bitrep/commit/03274bc520a82057f252e7d9391091c65a766b04"
+        },
+        "date": 1784322451343,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "sum/naive/1000",
+            "value": 877,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000",
+            "value": 3679,
+            "range": "± 2",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000",
+            "value": 2256,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000",
+            "value": 2720,
+            "range": "± 10",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000",
+            "value": 2486,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/100000",
+            "value": 93654,
+            "range": "± 185",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/100000",
+            "value": 374177,
+            "range": "± 463",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/100000",
+            "value": 222064,
+            "range": "± 918",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/100000",
+            "value": 505359,
+            "range": "± 1544",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/100000",
+            "value": 495034,
+            "range": "± 1298",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/naive/1000000",
+            "value": 937101,
+            "range": "± 5572",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/kahan/1000000",
+            "value": 3742550,
+            "range": "± 1880",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/xsum/1000000",
+            "value": 2178465,
+            "range": "± 11647",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep/1000000",
+            "value": 5097768,
+            "range": "± 13812",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "sum/bitrep_fast/1000000",
+            "value": 4904330,
+            "range": "± 14516",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "merge/100-shards-of-10k",
+            "value": 2638,
+            "range": "± 45",
             "unit": "ns/iter"
           }
         ]
