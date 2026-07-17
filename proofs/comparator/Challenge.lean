@@ -68,6 +68,11 @@ theorem merge_comm (a b : Int) : a + b = b + a := sorry
 
 theorem merge_assoc (a b c : Int) : (a + b) + c = a + (b + c) := sorry
 
+theorem unmerge_inverts_merge (a b : Int) : (a + b) - b = a := sorry
+
+theorem lsum_unmerge (l₁ l₂ : List Int) :
+    lsum (l₁ ++ l₂) - lsum l₂ = lsum l₁ := sorry
+
 /-! ## The rounding kernel is round-to-nearest, ties-to-even
     (RoundNearestEven.lean) -/
 

@@ -248,6 +248,7 @@ mod oracle {
     }
 
     /// Plain rational GE with partial pivot on exact fractions.
+    #[allow(clippy::needless_range_loop)]
     pub fn solve(mut m: Vec<Vec<Q>>) -> Option<Vec<Q>> {
         let n = m.len();
         for c in 0..n {

@@ -35,6 +35,8 @@ cat >> "$TMP" <<'AX'
 #print axioms Bitrep.add_placement_invariant
 #print axioms Bitrep.merge_comm
 #print axioms Bitrep.merge_assoc
+#print axioms Bitrep.unmerge_inverts_merge
+#print axioms Bitrep.lsum_unmerge
 -- rounding kernel (RoundNearestEven.lean)
 #print axioms Bitrep.roundAt_half_ulp
 #print axioms Bitrep.roundAt_nearest
