@@ -27,7 +27,7 @@ jobs:
     permissions:
       contents: write # github-action-benchmark stores the series on gh-pages (main only)
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable branch (tracks current stable)
       # Always run the suite: this alone proves the benches still compile and
       # execute (a real regression guard against bit-rotted benchmarks).
@@ -45,7 +45,7 @@ jobs:
       # Until then the tracking step is dormant; the bench run above still gates.
       - name: track / alert on regressions
         if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
-        uses: benchmark-action/github-action-benchmark@d48d326b4ca9ba73ca0cd0d59f108f9e02a381c7 # v1.20.4
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
         with:
           tool: cargo
           output-file-path: output.txt
