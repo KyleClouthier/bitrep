@@ -28,7 +28,7 @@ jobs:
           - { name: x86-64 windows, os: windows-latest }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable branch (tracks current stable)
       - run: cargo test --all-features
       - run: cargo test --no-default-features
@@ -37,7 +37,7 @@ jobs:
     name: wasm32 (wasmtime)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable branch (tracks current stable)
         with:
           targets: wasm32-wasip1
@@ -51,7 +51,7 @@ jobs:
     name: miri
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@efcb852328a9f50117170cc43094fb6f09eaf1ae # nightly branch (tracks current nightly)
         with:
           components: miri
@@ -67,7 +67,7 @@ jobs:
     name: clippy + fmt + docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable branch (tracks current stable)
         with:
           components: clippy, rustfmt
@@ -81,7 +81,7 @@ jobs:
     name: msrv (1.74)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master branch
         with:
           toolchain: "1.74"
@@ -91,7 +91,7 @@ jobs:
     name: lean proofs (zero sorry, axiom audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: install elan (Lean toolchain)
         run: |
           curl -sSfL https://github.com/leanprover/elan/releases/latest/download/elan-x86_64-unknown-linux-gnu.tar.gz | tar xz
@@ -123,7 +123,7 @@ jobs:
       LANDRUN_REF: main      # comparator requires landrun built from main-branch source
       DEPS: ${{ github.workspace }}/.comparator-deps
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       # Guard: the Solution comparator checks must be exactly the proofs the
       # rest of the repo (and the lean-proofs job) reasons about.
@@ -151,7 +151,7 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: stable
           # No go.sum in this repo (landrun is cloned below); the action's
@@ -166,14 +166,14 @@ jobs:
 
       - name: cache comparator build
         id: cache-comparator
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.DEPS }}/comparator
           key: comparator-${{ steps.deps.outputs.comparator-sha }}
 
       - name: cache lean4export build
         id: cache-lean4export
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ env.DEPS }}/lean4export
           key: lean4export-${{ steps.deps.outputs.lean4export-sha }}
@@ -210,7 +210,7 @@ jobs:
     name: cross-language conformance (Python reference)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable branch (tracks current stable)
       - name: regenerate vectors from the Rust crate
         run: cargo run --example gen_vectors
@@ -229,7 +229,7 @@ jobs:
     name: kani (merge + codec harnesses)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: install kani
         run: cargo install --locked kani-verifier && cargo kani setup
       # These three are fixed-shape limb arithmetic and solve in seconds to
